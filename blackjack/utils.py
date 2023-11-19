@@ -13,7 +13,7 @@ def thorp_basic_strategy():
     no_usable_ace = np.ones((10, 10))
     # build usable ace strategy
     usable_ace[:4, :] = 0
-    usable_ace[3, [0,8,9]] = 1
+    usable_ace[3, -2:] = 1
     # build no usable ace strategy
     no_usable_ace[:5, :] = 0
     no_usable_ace[:, 1:6] = 0

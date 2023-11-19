@@ -80,7 +80,7 @@ def create_grids(agent, usable_ace=False, show: bool = False, save: bool = False
     return value_grid, policy_grid
 
 
-def create_plots(value_grid, policy_grid, title: str, show: bool = False, save: bool = False, tag:str = None, save_dir: str = "outputs/"):
+def create_value_policy_plots(value_grid, policy_grid, title: str, show: bool = False, save: bool = False, tag:str = None, save_dir: str = "outputs/"):
     """Creates a plot using a value and policy grid."""
     # create a new figure with 2 subplots (left: state values, right: policy)
     player_count, dealer_count, value = value_grid
@@ -133,3 +133,46 @@ def create_plots(value_grid, policy_grid, title: str, show: bool = False, save: 
         Path(save_path).mkdir(exist_ok=True, parents=True)
         plt.savefig(os.path.join(save_path, title.lower().replace(" ", "_") + ".png"))
         print(f"Policy {title} saved at: {save_path}")
+
+
+def create_policy_plots(usable_ace_policy: np.ndarray, no_usable_ace_policy: np.ndarray, title: str, show: bool = False, save: bool = False, tag:str = None, save_dir: str = "outputs/"):
+    """Creates a plot showing policy for both usable and no usable ace."""
+    # create a new figure with 2 subplots (left: usable_ace_policy, right: no_usable_ace_policy)
+    fig = plt.figure(figsize=plt.figaspect(0.4))
+    fig.suptitle(title, fontsize=16)
+
+    # plot usable ace policy
+    fig.add_subplot(1, 2, 1)
+    ax1 = sns.heatmap(usable_ace_policy, linewidth=0, annot=True, cmap="Accent_r", cbar=False)
+    ax1.set_title(f"Policy: Usable Ace")
+    ax1.set_xlabel("Player sum")
+    ax1.set_ylabel("Dealer showing")
+    ax1.set_xticklabels(range(12, 22))
+    ax1.set_yticklabels(["A"] + list(range(2, 11)), fontsize=12)
+
+    # plot no usable ace policy
+    fig.add_subplot(1, 2, 2)
+    ax2 = sns.heatmap(no_usable_ace_policy, linewidth=0, annot=True, cmap="Accent_r", cbar=False)
+    ax2.set_title(f"Policy: No Usable Ace")
+    ax2.set_xlabel("Player sum")
+    ax2.set_ylabel("Dealer showing")
+    ax2.set_xticklabels(range(12, 22))
+    ax2.set_yticklabels(["A"] + list(range(2, 11)), fontsize=12)
+
+    # add a legend
+    legend_elements = [
+        Patch(facecolor="lightgreen", edgecolor="black", label="Hit"),
+        Patch(facecolor="grey", edgecolor="black", label="Stick"),
+    ]
+    ax2.legend(handles=legend_elements, bbox_to_anchor=(1.3, 1))
+
+    if show:    
+        plt.show()
+    if save:
+        if tag is None:
+            save_path = save_dir
+        else:
+            save_path = os.path.join(save_dir, tag)
+        Path(save_path).mkdir(exist_ok=True, parents=True)
+        plt.savefig(os.path.join(save_path, title.lower().replace(" ", "_") + ".png"))
+        print(f"{title} saved at: {save_path}")

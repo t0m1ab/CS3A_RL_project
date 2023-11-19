@@ -15,7 +15,7 @@ from tqdm import tqdm
 import gymnasium as gym
 
 from agents import BlackjackAgent
-from visualization import create_training_plots, create_grids, create_plots
+from visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
 # name of the experiment (used for saving the plots)
@@ -71,9 +71,12 @@ create_training_plots(env, agent, rolling_length=500, show=False, save=True, tag
 ### Visualize the policy
 
 # state values & policy with usable ace (ace counts as 11)
-value_grid, policy_grid = create_grids(agent, usable_ace=True)
-create_plots(value_grid, policy_grid, title="With usable ace", show=False, save=True, tag=EXPERIMENT_NAME)
+usable_ace_value_grid, usable_ace_policy_grid = create_grids(agent, usable_ace=True)
+create_value_policy_plots(usable_ace_value_grid, usable_ace_policy_grid, title="With usable ace", show=False, save=True, tag=EXPERIMENT_NAME)
 
 # state values & policy without usable ace (ace counts as 1)
-value_grid, policy_grid = create_grids(agent, usable_ace=False)
-create_plots(value_grid, policy_grid, title="Without usable ace", show=False, save=True, tag=EXPERIMENT_NAME)
+no_usable_ace_value_grid, no_usable_ace_policy_grid = create_grids(agent, usable_ace=False)
+create_value_policy_plots(no_usable_ace_value_grid, no_usable_ace_policy_grid, title="Without usable ace", show=False, save=True, tag=EXPERIMENT_NAME)
+
+# total policy (usable & no usable ace)
+create_policy_plots(usable_ace_policy_grid, no_usable_ace_policy_grid, title="Policy", show=False, save=True, tag=EXPERIMENT_NAME)

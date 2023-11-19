@@ -4,6 +4,6 @@
 
 **Date:** 2023/2024
 
-## 1 - Playing Black Jack using the Q-learning algorithm
+## 1 - Learn to play Black Jack using RL methods
 
-* The folder [blackjack](./blackjack/) contains all the code required to train an agent how to play Black Jack using the Q-learning algorithm.
+* The folder [blackjack](./blackjack/) contains all the code required to train an agent how to play Black Jack using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...

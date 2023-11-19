@@ -26,7 +26,7 @@ def thorp_basic_strategy():
 
 if __name__ == "__main__":
 
-    # create a plot showing Thorp basic strategy
+    # Create a plot showing Thorp basic strategy
     from visualization import create_policy_plots
     thorp_strat = thorp_basic_strategy()
     create_policy_plots(thorp_strat["usable_ace"], thorp_strat["no_usable_ace"], "Thorp basic strategy", show=False, save_dir="outputs/", save=True)

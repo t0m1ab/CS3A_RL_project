@@ -1,7 +1,9 @@
 import gymnasium as gym
 from tqdm import tqdm
+from collections import defaultdict
+import numpy as np
 
-from agents import BlackjackAgent, QlearningAgent
+from agents import BlackjackAgent, QlearningAgent, MCESAgent
 from visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
@@ -12,10 +14,18 @@ class Trainer():
         self.agent = None
         self.experiment_name = None
     
+    def has_training_curves(self) -> bool:
+        if self.agent is not None:
+            return len(self.agent.training_error) > 0
+        return False
+    
     def create_training_plots(self, rolling_length: int, show: bool = False, save: bool = False):
 
         if self.experiment_name is None:
             raise ValueError("Need to train an agent first")
+    
+        if len(self.agent.training_error) == 0:
+            raise ValueError("Agent didn't record training error in its attribute 'training_error'")
         
         # state values & policy with usable ace (ace counts as 11)
         create_training_plots(self.env, self.agent, rolling_length=rolling_length, show=show, save=save, tag=self.experiment_name)
@@ -42,8 +52,8 @@ class QlearningTrainer(Trainer):
     def __init__(self, learning_rate: float, n_episodes: int, start_epsilon: float, final_epsilon: float, discount_factor: float) -> None:
         super().__init__()
         self.lr = learning_rate
-        self.discount_factor = discount_factor
         self.n_episodes = n_episodes
+        self.discount_factor = discount_factor
         self.start_epsilon = start_epsilon
         self.final_epsilon = final_epsilon
         self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
@@ -84,16 +94,86 @@ class QlearningTrainer(Trainer):
         return self.agent
 
 
+class MCESTrainer(Trainer):
+    
+    def __init__(self, n_episodes: int, start_epsilon: float, final_epsilon: float, discount_factor: float) -> None:
+        super().__init__()
+        self.n_episodes = n_episodes
+        self.discount_factor = discount_factor
+        self.start_epsilon = start_epsilon
+        self.final_epsilon = final_epsilon
+        self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
+    
+    def train(self, env: gym.Env, experiment_name: str) -> BlackjackAgent:
+        
+        self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
+
+        self.agent = MCESAgent(
+            action_space_size=self.env.action_space.n,
+            discount_factor=self.discount_factor,
+            start_epsilon=self.start_epsilon,
+            final_epsilon=self.final_epsilon,
+            epsilon_decay=self.epsilon_decay,
+        )
+
+        self.experiment_name = experiment_name
+
+        for episode in tqdm(range(self.n_episodes)):
+
+            obs, _ = self.env.reset()
+            random_action = np.random.choice([0,1]) # random action to explore the environment
+            next_obs, reward, terminated, truncated, _ = self.env.step(random_action)
+
+            states = [obs, next_obs] # S list
+            actions = [random_action] # A list
+            rewards = [None, reward] # R list
+
+            while not terminated:
+
+                action = self.agent.get_action(self.env, obs)
+                next_obs, reward, terminated, truncated, _ = self.env.step(action)
+
+                states.append(next_obs)
+                actions.append(action)
+                rewards.append(reward)
+            
+            if terminated:
+                states.pop()
+
+            # at this stage states and actions should have T elements and rewards T+1 elements
+            assert len(actions) == len(states)
+            assert len(rewards) == len(states) + 1
+
+            # print("-"*100)
+            # print(len(states))
+            # print(states, actions, rewards)
+
+            # update the agent
+            self.agent.update(states, actions, rewards)
+
+            self.agent.decay_epsilon()
+                
+        return self.agent
+
+
 if __name__ == "__main__":
 
-    # Test the creation of a QlearningTrainer
+    # Test the creation of a Trainer
     import gymnasium as gym
     env = gym.make("Blackjack-v1", sab=True) 
-    trainer = QlearningTrainer(
-        learning_rate=0.01,
-        n_episodes=100000,
-        start_epsilon=1.0,
-        final_epsilon=0.1,
+
+    # QlearningTrainer
+    # trainer = QlearningTrainer(
+    #     learning_rate=0.01,
+    #     n_episodes=100000,
+    #     start_epsilon=1.0,
+    #     final_epsilon=0.1,
+    #     discount_factor=0.95,
+    # )
+
+    # MCESTrainer
+    trainer = MCESTrainer(
+        n_episodes=100,
         discount_factor=0.95,
     )
 

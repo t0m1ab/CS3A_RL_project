@@ -5,20 +5,48 @@ from agents import BlackjackAgent, QlearningAgent
 from visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
-class QlearningTrainer():
+class Trainer():
+
+    def __init__(self) -> None:
+        self.env = None
+        self.agent = None
+        self.experiment_name = None
+    
+    def create_training_plots(self, rolling_length: int, show: bool = False, save: bool = False):
+
+        if self.experiment_name is None:
+            raise ValueError("Need to train an agent first")
+        
+        # state values & policy with usable ace (ace counts as 11)
+        create_training_plots(self.env, self.agent, rolling_length=rolling_length, show=show, save=save, tag=self.experiment_name)
+    
+    def create_value_policy_plots(self, show: bool = False, save: bool = False):
+
+        if self.experiment_name is None:
+            raise ValueError("Need to train an agent first")
+        
+        # state values & policy with usable ace (ace counts as 11)
+        usable_ace_value_grid, usable_ace_policy_grid = create_grids(self.agent, usable_ace=True)
+        create_value_policy_plots(usable_ace_value_grid, usable_ace_policy_grid, title="Policy usable ace", show=show, save=save, tag=self.experiment_name)
+
+        # state values & policy without usable ace (ace counts as 1)
+        no_usable_ace_value_grid, no_usable_ace_policy_grid = create_grids(self.agent, usable_ace=False)
+        create_value_policy_plots(no_usable_ace_value_grid, no_usable_ace_policy_grid, title="Policy no usable ace", show=show, save=save, tag=self.experiment_name)
+
+        # total policy (usable & no usable ace)
+        create_policy_plots(usable_ace_policy_grid, no_usable_ace_policy_grid, title="Policy", show=show, save=save, tag=self.experiment_name)
+
+
+class QlearningTrainer(Trainer):
     
     def __init__(self, learning_rate: float, n_episodes: int, start_epsilon: float, final_epsilon: float, discount_factor: float) -> None:
-
+        super().__init__()
         self.lr = learning_rate
         self.discount_factor = discount_factor
         self.n_episodes = n_episodes
         self.start_epsilon = start_epsilon
         self.final_epsilon = final_epsilon
         self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
-
-        self.env = None
-        self.agent = None
-        self.experiment_name = None
     
     def train(self, env: gym.Env, experiment_name: str) -> BlackjackAgent:
         
@@ -54,30 +82,6 @@ class QlearningTrainer():
             self.agent.decay_epsilon()
                 
         return self.agent
-    
-    def create_training_plots(self, rolling_length: int, show: bool = False, save: bool = False):
-
-        if self.experiment_name is None:
-            raise ValueError("Need to train an agent first")
-        
-        # state values & policy with usable ace (ace counts as 11)
-        create_training_plots(self.env, self.agent, rolling_length=rolling_length, show=show, save=save, tag=self.experiment_name)
-    
-    def create_value_policy_plots(self, show: bool = False, save: bool = False):
-
-        if self.experiment_name is None:
-            raise ValueError("Need to train an agent first")
-        
-        # state values & policy with usable ace (ace counts as 11)
-        usable_ace_value_grid, usable_ace_policy_grid = create_grids(self.agent, usable_ace=True)
-        create_value_policy_plots(usable_ace_value_grid, usable_ace_policy_grid, title="Policy usable ace", show=show, save=save, tag=self.experiment_name)
-
-        # state values & policy without usable ace (ace counts as 1)
-        no_usable_ace_value_grid, no_usable_ace_policy_grid = create_grids(self.agent, usable_ace=False)
-        create_value_policy_plots(no_usable_ace_value_grid, no_usable_ace_policy_grid, title="Policy no usable ace", show=show, save=save, tag=self.experiment_name)
-
-        # total policy (usable & no usable ace)
-        create_policy_plots(usable_ace_policy_grid, no_usable_ace_policy_grid, title="Policy", show=show, save=save, tag=self.experiment_name)
 
 
 if __name__ == "__main__":

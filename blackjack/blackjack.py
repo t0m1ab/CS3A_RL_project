@@ -10,15 +10,16 @@ from trainers import QlearningTrainer, MCESTrainer
 
 
 def main():
-    """ Main process to train an agent how to play blackjack. """
-
-    # name of the experiment (used for saving the plots)
-    EXPERIMENT_NAME = "test_QLEARNING"
+    """ 
+    Main process to train an agent how to play blackjack. 
+    Different methods such as MCES or Qlearning are available to train the agent.
+    Choose the method by uncommenting the corresponding trainer lines.
+    """
 
     # blackjack environment from Sutton & Barto (sab)
     env = gym.make("Blackjack-v1", sab=True)
 
-    # Qlearning
+    # QLEARNING
     trainer = QlearningTrainer(
         learning_rate=0.01,
         n_episodes=100000,
@@ -27,13 +28,15 @@ def main():
         discount_factor=0.95,
     )
 
-    # Monte-Carlo Exploring Starts
+    # MCES
     # trainer = MCESTrainer(
-    #     n_episodes=1000000,
-    #     start_epsilon=1.0,
-    #     final_epsilon=0.1,
-    #     discount_factor=0.7,
+    #     n_episodes=100000,
+    #     discount_factor=1.0,
     # )
+
+    # name of the experiment (used to create a subfolder to save the plots related to this agent/training)
+    # if EXPERIMENT_NAME is set to None, a default name will be used based on the name of the traine (e.g. QlearningTrainer => QLEARNING)
+    EXPERIMENT_NAME = None
 
     agent = trainer.train(
         env=env,
@@ -42,7 +45,7 @@ def main():
 
     # save plots
     if trainer.has_training_curves():
-        trainer.create_training_plots(rolling_length=500, save=True)
+        trainer.create_training_plots(save=True)
     trainer.create_value_policy_plots(save=True)
 
 

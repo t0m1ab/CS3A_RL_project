@@ -132,7 +132,7 @@ def create_value_policy_plots(value_grid, policy_grid, title: str, show: bool = 
             save_path = os.path.join(save_dir, tag)
         Path(save_path).mkdir(exist_ok=True, parents=True)
         plt.savefig(os.path.join(save_path, title.lower().replace(" ", "_") + ".png"))
-        print(f"Policy {title} saved at: {save_path}")
+        print(f"{title} saved at: {save_path}")
 
 
 def create_policy_plots(usable_ace_policy: np.ndarray, no_usable_ace_policy: np.ndarray, title: str, show: bool = False, save: bool = False, tag:str = None, save_dir: str = "outputs/"):

@@ -6,7 +6,7 @@ Inspired from: https://gymnasium.farama.org/tutorials/training_agents/blackjack_
 
 import gymnasium as gym
 
-from trainers import QlearningTrainer, MCESTrainer
+from trainers import QlearningTrainer, MCESTrainer, SARSATrainer
 
 
 def main():
@@ -32,6 +32,15 @@ def main():
     # trainer = MCESTrainer(
     #     n_episodes=100000,
     #     discount_factor=1.0,
+    # )
+
+    # SARSA
+    # trainer = SARSATrainer(
+    #     learning_rate=0.01,
+    #     n_episodes=100000,
+    #     start_epsilon=1.0,
+    #     final_epsilon=0.1,
+    #     discount_factor=0.95,
     # )
 
     # name of the experiment (used to create a subfolder to save the plots related to this agent/training)

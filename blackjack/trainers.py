@@ -2,7 +2,7 @@ from tqdm import tqdm
 import numpy as np
 import gymnasium as gym
 
-from agents import BlackjackAgent, QlearningAgent, MCESAgent
+from agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
 from visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
@@ -144,6 +144,56 @@ class MCESTrainer(Trainer):
         return self.agent
 
 
+class SARSATrainer(Trainer):
+    
+    def __init__(self, learning_rate: float, n_episodes: int, start_epsilon: float, final_epsilon: float, discount_factor: float) -> None:
+        super().__init__()
+        self.lr = learning_rate
+        self.n_episodes = n_episodes
+        self.discount_factor = discount_factor
+        self.start_epsilon = start_epsilon
+        self.final_epsilon = final_epsilon
+        self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
+    
+    def train(self, env: gym.Env, experiment_name: str = None) -> BlackjackAgent:
+        
+        self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
+
+        self.agent = SARSAAgent(
+            action_space_size=self.env.action_space.n,
+            learning_rate=self.lr,
+            start_epsilon=self.start_epsilon,
+            final_epsilon=self.final_epsilon,
+            epsilon_decay=self.epsilon_decay,
+            discount_factor=self.discount_factor,
+        )
+
+        self.experiment_name = experiment_name if experiment_name is not None else "SARSA"
+
+        for episode in tqdm(range(self.n_episodes)):
+
+            state, _ = self.env.reset() # S1
+            action = self.agent.get_action(self.env, state) # A1
+            done = False
+
+            # play one episode
+            while not done:
+
+                next_state, reward, terminated, truncated, _ = self.env.step(action) # R1, S2
+                next_action = self.agent.get_action(self.env, next_state) # A2
+
+                self.agent.update(state, action, reward, next_state, next_action, terminated)
+
+                state = next_state
+                action = next_action
+                done = terminated or truncated
+
+            self.agent.decay_epsilon()
+                
+        return self.agent
+
+
+
 if __name__ == "__main__":
 
     # Test the creation of a Trainer
@@ -168,3 +218,14 @@ if __name__ == "__main__":
     )
 
     print("MCES Trainer is ready!")
+
+    # SARSATrainer
+    trainer = SARSATrainer(
+        learning_rate=0.01,
+        n_episodes=100000,
+        start_epsilon=1.0,
+        final_epsilon=0.1,
+        discount_factor=0.95,
+    )
+
+    print("SARSA Trainer is ready!")

@@ -33,6 +33,9 @@ class BlackjackAgent:
         self.epsilon_decay = epsilon_decay # reduce the exploration over time
 
         self.training_error = []
+    
+    def decay_epsilon(self) -> None:
+        self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)
 
 
 class QlearningAgent(BlackjackAgent):
@@ -64,9 +67,6 @@ class QlearningAgent(BlackjackAgent):
         temporal_difference = reward + self.discount_factor * future_q_value - self.q_values[obs][action]
         self.q_values[obs][action] = self.q_values[obs][action] + self.lr * temporal_difference
         self.training_error.append(temporal_difference)
-
-    def decay_epsilon(self) -> None:
-        self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)
 
 
 class MCESAgent(BlackjackAgent):
@@ -110,6 +110,38 @@ class MCESAgent(BlackjackAgent):
                 self.q_values[state_t][action_t] = self.mean_return[state_action_pairs[t]][1]
 
 
+class SARSAAgent(BlackjackAgent):
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+
+    def get_action(self, env, state: tuple[int, int, bool]) -> int:
+        """
+        Returns the best action with probability (1 - epsilon) otherwise a random action with probability epsilon to ensure exploration.
+        """
+        if np.random.random() < self.epsilon: # with probability epsilon return a random action to explore the environment
+            return env.action_space.sample()
+        else: # with probability (1 - epsilon) act greedily (exploit)
+            return int(np.argmax(self.q_values[state]))
+
+    def update(
+        self,
+        state: tuple[int, int, bool],
+        action: int,
+        reward: float,
+        next_state: tuple[int, int, bool],
+        next_action: int,
+        terminated: bool,
+    ) -> None:
+        """
+        Updates the Q-value of an action following the SARSA method [see S&B section 6.4].
+        """
+        q_value = self.q_values[state][action]
+        next_q_value = (not terminated) * self.q_values[next_state][next_action]
+        td_error = reward + self.discount_factor * next_q_value - q_value
+        self.q_values[state][action] = q_value + self.lr * td_error
+    
+
 if __name__ == "__main__":
 
     # Test the creation of an agent following the rules from Sutton & Barto
@@ -135,5 +167,17 @@ if __name__ == "__main__":
     )
 
     print("MCES agent is ready!")
+
+    # SARSAAgent
+    MCES_agent = SARSAAgent(
+        action_space_size=env.action_space.n,
+        learning_rate=0.01,
+        start_epsilon=1.0,
+        final_epsilon=0.1,
+        epsilon_decay=1e-3,
+        discount_factor=0.95,
+    )
+
+    print("SARSA` agent is ready!")
 
 

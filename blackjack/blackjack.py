@@ -6,7 +6,7 @@ Inspired from: https://gymnasium.farama.org/tutorials/training_agents/blackjack_
 
 import gymnasium as gym
 
-from trainers import QlearningTrainer, MCESTrainer
+from trainers import QlearningTrainer, MCESTrainer, MC_soft_policyTrainer
 
 
 def main():
@@ -20,19 +20,26 @@ def main():
     env = gym.make("Blackjack-v1", sab=True)
 
     # QLEARNING
-    trainer = QlearningTrainer(
-        learning_rate=0.01,
-        n_episodes=100000,
-        start_epsilon=1.0,
-        final_epsilon=0.1,
-        discount_factor=0.95,
-    )
+    #trainer = QlearningTrainer(
+    #    learning_rate=0.01,
+    #    n_episodes=100000,
+    #    start_epsilon=1.0,
+    #    final_epsilon=0.1,
+    #    discount_factor=0.95,
+    #)
 
     # MCES
-    # trainer = MCESTrainer(
-    #     n_episodes=100000,
-    #     discount_factor=1.0,
-    # )
+    trainer = MCESTrainer(
+         n_episodes=100000,
+         discount_factor=1.0,
+    )
+
+    # MC_soft_policy
+    #trainer = MC_soft_policyTrainer(
+    #    n_episodes=100000,
+    #    start_epsilon=0.1,
+    #    discount_factor=1,
+    #)
 
     # name of the experiment (used to create a subfolder to save the plots related to this agent/training)
     # if EXPERIMENT_NAME is set to None, a default name will be used based on the name of the traine (e.g. QlearningTrainer => QLEARNING)

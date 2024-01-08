@@ -1,8 +1,16 @@
 from collections import defaultdict
 import numpy as np
 
+def array_to_tuple(a):
+    arr1, arr2, arr3, arr4 = a
+    tuple1 = tuple(tuple(row) for row in arr1)
+    tuple2 = tuple(tuple(row) for row in arr2)
+    tuple3 = tuple(tuple(row) for row in arr3)
+    tuple4 = tuple(tuple(row) for row in arr4)
+    tuple_a = (tuple1, tuple2, tuple3, tuple4)
+    return(tuple_a)
 
-class BlackjackAgent:
+class SokobanAgent:
 
     def __init__(
         self,
@@ -31,46 +39,57 @@ class BlackjackAgent:
         self.epsilon = start_epsilon
         self.final_epsilon = final_epsilon
         self.epsilon_decay = epsilon_decay # reduce the exploration over time
-
+        self.reward = 0
         self.training_error = []
 
 
-class QlearningAgent(BlackjackAgent):
+class QlearningAgent(SokobanAgent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
-    def get_action(self, env, obs: tuple[int, int, bool]) -> int:
+    def get_action(self, env, obs: np.array) -> int:
         """
         Returns the best action with probability (1 - epsilon) otherwise a random action with probability epsilon to ensure exploration.
         """
         if np.random.random() < self.epsilon: # with probability epsilon return a random action to explore the environment
             return env.action_space.sample()
         else: # with probability (1 - epsilon) act greedily (exploit)
-            return int(np.argmax(self.q_values[obs]))
+            return int(np.argmax(self.q_values[array_to_tuple(obs)]))
 
     def update(
         self,
-        obs: tuple[int, int, bool],
+        obs,
         action: int,
         reward: float,
         terminated: bool,
-        next_obs: tuple[int, int, bool],
+        next_obs,
     ) -> None:
         """
         Updates the Q-value of an action following the Q-learning method [see S&B section 6.5].
         """
-        print(next_obs)
-        future_q_value = (not terminated) * np.max(self.q_values[next_obs])
-        temporal_difference = reward + self.discount_factor * future_q_value - self.q_values[obs][action]
-        self.q_values[obs][action] = self.q_values[obs][action] + self.lr * temporal_difference
+        #if isinstance(next_obs, np.ndarray):
+        #    tuple_obs = tuple(next_obs.flatten())
+        #elif isinstance(next_obs, tuple):
+        #    tuple_obs = tuple(el.flatten() if isinstance(el, np.ndarray) else el for el in next_obs)
+        #elif next_obs is None:
+        #    tuple_obs = (0,)  # ou toute autre valeur par défaut
+        #else:
+        #    raise TypeError("Unsupported type for next_obs")
+        #tuple_obs=(tuple(next_obs[0].flatten()),tuple(next_obs[1].flatten()),tuple(next_obs[2].flatten()),tuple(next_obs[3]).flatten())
+        # Supposons que vos tableaux numpy sont nommés arr1, arr2, arr3, arr4
+        tuple_next_obs=array_to_tuple(next_obs)
+        future_q_value = (not terminated) * np.max(self.q_values[tuple_next_obs])
+        temporal_difference = reward + self.discount_factor * future_q_value - self.q_values[tuple_next_obs][action]
+        self.q_values[tuple_next_obs][action] = self.q_values[tuple_next_obs][action] + self.lr * temporal_difference
         self.training_error.append(temporal_difference)
+        self.reward=reward + self.discount_factor*self.reward
 
     def decay_epsilon(self) -> None:
         self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)
 
 
-class MCESAgent(BlackjackAgent):
+class MCESAgent(SokobanAgent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -109,10 +128,11 @@ class MCESAgent(BlackjackAgent):
                 state_t, action_t = state_action_pairs[t]
                 self.update_mean_return(state_t, action_t, return_value=G) # update the mean return for the (state_t, action_t) pair
                 self.q_values[state_t][action_t] = self.mean_return[state_action_pairs[t]][1]
+        self.reward=G
 
 
 
-class MC_soft_policyAgent(BlackjackAgent):
+class MC_soft_policyAgent(SokobanAgent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -161,7 +181,7 @@ if __name__ == "__main__":
 
     # Test the creation of an agent following the rules from Sutton & Barto
     import gymnasium as gym
-    env = gym.make("Blackjack-v1", sab=True) 
+    env = gym.make("Sokoban-v2", sab=True) 
 
     # QlearningAgent
     Qlearning_agent = QlearningAgent(

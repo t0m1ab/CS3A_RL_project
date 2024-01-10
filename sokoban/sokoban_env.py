@@ -1,6 +1,6 @@
 import numpy as np
 from gymnasium import Env
-from gymnasium.spaces import Discrete, Box
+from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
 # from .room_utils import generate_room
@@ -64,6 +64,7 @@ class SokobanEnv(Env):
             map_dim: tuple = (10, 10),
             num_boxes: int = 1,
             gen_steps: int = 120,
+            max_steps: int = None,
             # reset: bool = True,
         ):
         """
@@ -85,6 +86,8 @@ class SokobanEnv(Env):
         self.last_reward = 0
         # counter of the number of steps taken from the initial state
         self.num_env_steps = 0
+        # maximum number of steps allowed before truncation (no limit if None)
+        self.max_steps = max_steps
 
         # build the map
         self.map = None
@@ -109,7 +112,10 @@ class SokobanEnv(Env):
 
         # initialize the environment spaces
         self.action_space = Discrete(len(SokobanEnv.ACTION_LOOKUP))
-        self.observation_space = Box(low=0, high=len(SokobanEnv.TYPE_LOOKUP)-1, shape=(map_dim[0], map_dim[1]), dtype=np.uint8)
+        self.observation_space = Tuple((
+            Box(low=0, high=len(SokobanEnv.TYPE_LOOKUP)-1, shape=(map_dim[0], map_dim[1]), dtype=np.uint8),
+            Tuple((Discrete(map_dim[0]), Discrete(map_dim[1]))),
+        )) # Box = map without player | Tuple = player position in the map
         
         # if reset:
         #     self.reset()
@@ -193,19 +199,32 @@ class SokobanEnv(Env):
         """
 
         if self.__contains_box(cell_push) and self.__is_free_cell(cell_after): # push box
+            
             if self.map[cell_after] == 1: # empty space
                 self.map[cell_after] = 4
-                reward = SokobanEnv.REWARDS["step"]
+                if self.map[cell_push] == 3: # box on target
+                    self.map[cell_push] = 2
+                    self.boxes_on_target -= 1
+                    reward = SokobanEnv.REWARDS["box_off_target"]
+                else: # box not on target
+                    self.map[cell_push] = 1
+                    reward = SokobanEnv.REWARDS["step"]
+            
             elif self.map[cell_after] == 2: # box target
                 self.map[cell_after] = 3
+                if self.map[cell_push] == 3: # box on target
+                    self.map[cell_push] = 2
+                    reward = SokobanEnv.REWARDS["step"] # no positive gain from pushing box from target to target
+                else: # box not on target
+                    self.map[cell_push] = 1
+                    reward = SokobanEnv.REWARDS["box_on_target"]
                 self.boxes_on_target += 1
                 if self.boxes_on_target == self.num_boxes:
                     reward = SokobanEnv.REWARDS["done"]
-                else:
-                    reward = SokobanEnv.REWARDS["box_on_target"]
+            
             else:
                 raise ValueError(f"Cell {cell_after} was supposed to be free but is {self.map[cell_after]}...")
-            self.map[cell_push] = 1
+            
             self.player_position = cell_push
             return reward
 
@@ -240,23 +259,19 @@ class SokobanEnv(Env):
   
         self.num_env_steps += 1
         
-        done = (self.boxes_on_target == self.num_boxes) or (self.num_env_steps == self.max_steps)
+        terminated = (self.boxes_on_target == self.num_boxes) or (self.num_env_steps == self.max_steps)
+        truncated = False if self.max_steps is None else (self.num_env_steps >= self.max_steps)
 
-        # # Convert the observation to RGB frame
-        # observation = self.render(mode='raw')
+        info = {
+            "action_name": SokobanEnv.ACTION_LOOKUP[action],
+            # "action_moved_player": player_moved,
+            # "action_moved_box": box_moved,
+        }
+        if terminated or truncated:
+            info["steps_used"] = self.num_env_steps
+            info["all_boxes_on_target"] = (self.boxes_on_target == self.num_boxes)
 
-        # info = {
-        #     "action.name": ACTION_LOOKUP[action],
-        #     "action.moved_player": moved_player,
-        #     "action.moved_box": moved_box,
-        # }
-        # if done:
-        #     info["maxsteps_used"] = self._check_if_maxsteps()
-        #     info["all_boxes_on_target"] = self._check_if_all_boxes_on_target()
-
-        # return observation, self.reward_last, done, False, info
-
-        return self.reward_last, done
+        return (self.map, self.player_position), self.last_reward, terminated, truncated, info
 
     def render(self, mode='raw', close=None, scale=1):
 

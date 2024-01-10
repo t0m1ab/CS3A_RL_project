@@ -1,13 +1,16 @@
+import os
 import numpy as np
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
-from dataloaders import SokobanDataLoader
+from dataloaders import SokobanDataLoader, sokoban_datafile_parser
 from my_render_utils import SokobanRenderingEngine
 
 
 def generate_map(map_dim: int, num_boxes: int, gen_steps: int):
+    """ Generate a map with the given dimensions and number of boxes. """
+    print("WARNING: generating a random map...")
     fake_map = np.zeros(map_dim, dtype=np.uint8)
     fake_map[1,4] = 5
     return fake_map
@@ -56,7 +59,6 @@ class SokobanEnv(Env):
 
     def __init__(
             self,
-            map_json: str = None,
             map_txt: str = None,
             map_collection: SokobanDataLoader = None,
             map_dim: tuple = (10, 10),
@@ -66,77 +68,75 @@ class SokobanEnv(Env):
         ):
         """
         INPUTS:
-            - map_json: path to a json file containing a map
-            - map_data: numpy array containing a map
-            - map_dim: tuple containing the dimensions of the map
-            - num_boxes: number of boxes to put in the map
-            - max_steps: maximum number of steps for map generation
+            - map_txt: path to a txt file containing a map with the same symbols as in SokobanEnv.TYPE_LOOKUP
+            - map_collection: SokobanDataLoader containing a collection of maps
+            - map_dim: tuple containing the dimensions of the map to generate
+            - num_boxes: number of boxes to put in the generated map
+            - gen_steps: maximum number of steps for map generation
+            - max_steps: maximum number of steps for an episode
         """
 
-        # number of generation steps
-        self.gen_steps = int(1.7 * (map_dim[0] + map_dim[1])) if gen_steps is None else gen_steps
-        # number of boxes in the map
-        self.num_boxes = num_boxes
-        # number of boxes correctly placed on a target
-        self.boxes_on_target = 0
-        # last reward obtained
-        self.last_reward = 0
-        # counter of the number of steps taken from the initial state
-        self.num_env_steps = 0
-        # maximum number of steps allowed before truncation (no limit if None)
-        self.max_steps = max_steps
-
+        ## set up a map
         self.map_collection = None
         self.map_id = 0
-
+        self.map = None
         if map_collection is not None: # load a collection of maps
-
             if not isinstance(map_collection, SokobanDataLoader):
                 raise ValueError(f"map_collection must be a SokobanDataLoader but is a {type(map_collection)}.")
             self.map_collection = map_collection
             self.map_collection.set_auto_extract_player(False)
             self.map = self.map_collection[self.map_id]
-            self.map_dim = self.map.shape
-    
-        else: # load a single map
-
-            self.map = None
-            if map_json is not None and map_txt is not None:
-                raise ValueError("Only one of map_json and map_txt can be specified.")
-            if map_json is not None:
-                self.map = self.__load_map_from_json(filepath=map_json)
-                self.map_dim = self.map.shape
-            if map_txt is not None:
-                self.map = self.__load_map_from_txt(filepath=map_txt)
-                self.map_dim = self.map.shape
-            if self.map is None:
-                self.map_dim = map_dim
-                if self.map_dim is None or self.num_boxes is None:
-                    raise ValueError("Either a map file or map_dim must be specified.")
-                self.map = generate_map(map_dim=self.map_dim, num_boxes=self.num_boxes, gen_steps=self.gen_steps)
+        elif map_txt is not None: # load a single map
+            self.map = self.__load_map_from_txt(filepath=map_txt)
+        else: # generate a map
+            gen_steps = int(1.7 * (map_dim[0] + map_dim[1])) if gen_steps is None else gen_steps
+            if map_dim is None or num_boxes is None or gen_steps is None:
+                raise ValueError("map_dim, num_boxes and gen_steps must be specified to generate a map.")
+            self.map = generate_map(map_dim=map_dim, num_boxes=num_boxes, gen_steps=gen_steps)
             
-        # save the initial map and don't modify the original
+        ## save the initial map and don't modify it during the episode
         self.init_map  = self.map.copy()
-        self.player_position = self.__get_player_position()
-        self.map[self.player_position] = 1 # virtually free the cell where the player is
+        self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
+        self.map_dim = self.map.shape
 
-        # initialize the environment spaces
+        ## action_space: int for each action
         self.action_space = Discrete(len(SokobanEnv.ACTION_LOOKUP))
+        
+        ## observation_space: Box = map without player | Tuple = player position in the map
         self.observation_space = Tuple((
             Box(low=0, high=len(SokobanEnv.TYPE_LOOKUP)-1, shape=(map_dim[0], map_dim[1]), dtype=np.uint8),
             Tuple((Discrete(map_dim[0]), Discrete(map_dim[1]))),
-        )) # Box = map without player | Tuple = player position in the map
+        ))
 
-        # initialize the rendering engine
+        ## set map and episode attributes
+        self.num_boxes = self.__count_boxes() # number of boxes in the map
+        self.boxes_on_target = 0 # number of boxes correctly placed on a target
+        self.last_reward = 0 # last reward obtained
+        self.num_env_steps = 0 # counter of the number of steps taken from the initial state
+        self.max_steps = max_steps # maximum number of steps allowed before truncation (no limit if None)
+
+        ## initialize the rendering engine
         self.rendering_engine = SokobanRenderingEngine()
 
-    def __load_map_from_json(self, filepath: str):
-        return np.zeros((42,42))
+    def __load_map_from_txt(self, filepath: str) -> np.ndarray:
+        """ Load a map from a txt file with direct str->int symbol matching. """
 
-    def __load_map_from_txt(self, filepath: str):
-        return np.zeros((42,42))
+        if not os.path.isfile(filepath):
+            raise FileNotFoundError(f"File does not exist: {filepath}")
+        
+        with open(filepath, "r") as f:
+            raw_content = f.read()
 
-    def __get_player_position(self):
+        symbols_matching = {str(x): x for x in SokobanEnv.TYPE_LOOKUP.keys()}
+
+        levels = sokoban_datafile_parser(raw_content, symbols_matching=symbols_matching)
+
+        if len(levels) == 0:
+            raise ValueError(f"No map found in file: {filepath}")
+        
+        return list(levels.values())[0]
+
+    def __get_player_position(self, extract_player: bool = False):
 
         if not SokobanEnv.PLAYER_ID in self.map:
             raise ValueError("Player not found in the map.")
@@ -146,23 +146,33 @@ class SokobanEnv(Env):
         if len(coords) > 1:
             raise ValueError("Multiple players found in the map.")
         
+        if extract_player:
+            self.map[coords[0][0], coords[0][1]] = 1
+        
         return (coords[0][0], coords[0][1])
 
+    def __count_boxes(self, xmap: np.ndarray = None) -> int:
+        """ Count the number of boxes in the map. """
+        xmap = self.map if xmap is None else xmap
+        return np.sum(xmap == 3) + np.sum(xmap == 4)
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
     def reset_episode(self) -> None:
-        """
-        Reset the environment to the initial state of the map.
-        """
+        """ Reset the environment to the initial state of the map. """
         self.map = self.init_map.copy().astype(np.uint8)
+        self.num_boxes = self.__count_boxes()
         self.boxes_on_target = 0
         self.last_reward = 0
         self.num_env_steps = 0
-        self.player_position = self.__get_player_position()
-        self.map[self.player_position] = 1 # virtually free the cell where the player is
+        self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
     
-    def reset(self, mode: str = "random", seed: int = None, options: dict = None) -> None:
+    def reset(self, mode: str = "random", seed: int = None, options: dict = None) -> tuple[tuple[np.ndarray, tuple[int,int]], dict]:
         """
         Reset the environment using another map is a map_collection is given.
-        Else just perform a reset_episode().
+        Otherwise just perform a reset_episode().
         """
         
         if seed is not None:
@@ -181,9 +191,12 @@ class SokobanEnv(Env):
 
         return (self.map, self.player_position), {}
 
-    def seed(self, seed=None):
-        self.np_random, seed = seeding.np_random(seed)
-        return [seed]
+    def __is_done(self) -> bool:
+        """ Returns True if all boxes are on target or if the max_steps is reached. """
+        if self.max_steps is None:
+            return self.boxes_on_target == self.num_boxes
+        else:
+            return (self.boxes_on_target == self.num_boxes) or (self.num_env_steps >= self.max_steps)
 
     def __get_ahead_cells(self, action: int):
         """
@@ -206,15 +219,11 @@ class SokobanEnv(Env):
         return cell_ahead, cell_after
     
     def __is_free_cell(self, cell: tuple) -> bool:
-        """
-        Returns True if the cell is free, False otherwise.
-        """
+        """ Returns True if the cell is free, False otherwise. """
         return self.map[cell] in [1,2]
     
     def __contains_box(self, cell: tuple) -> bool:
-        """
-        Returns True if the cell contains a box, False otherwise.
-        """
+        """ Returns True if the cell contains a box, False otherwise. """
         return self.map[cell] in [3,4]
 
     def __push(self, cell_push: tuple, cell_after: tuple) -> float:
@@ -285,7 +294,7 @@ class SokobanEnv(Env):
   
         self.num_env_steps += 1
         
-        terminated = (self.boxes_on_target == self.num_boxes) or (self.num_env_steps == self.max_steps)
+        terminated = self.__is_done()
         truncated = False if self.max_steps is None else (self.num_env_steps >= self.max_steps)
 
         info = {
@@ -298,12 +307,6 @@ class SokobanEnv(Env):
             info["all_boxes_on_target"] = (self.boxes_on_target == self.num_boxes)
 
         return (self.map, self.player_position), self.last_reward, terminated, truncated, info
-
-    def render(self, mode: str = None):
-        """ Only mode "human" is supported for now and is the default rendering given by the engine. """
-        
-        image = self.get_image(mode=mode)
-        image.show()
 
     def get_image(self, mode: str = None):
         """ Only mode "human" is supported for now and is the default rendering given by the engine. """
@@ -321,6 +324,12 @@ class SokobanEnv(Env):
         )
 
         return image
+
+    def render(self, mode: str = None):
+        """ Only mode "human" is supported for now and is the default rendering given by the engine. """
+        
+        image = self.get_image(mode=mode)
+        image.show()
 
     def get_action_lookup(self):
         return SokobanEnv.ACTION_LOOKUP

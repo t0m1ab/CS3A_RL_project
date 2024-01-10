@@ -30,6 +30,7 @@ class SokobanRenderingEngine():
         0: "wall.png",
         1: "floor.png",
         2: "box_target.png",
+        3: "box_on_target.png",
         4: "box.png",
         PLAYER_ID: "player_alpha.png",
     }

@@ -11,14 +11,12 @@ class Interface():
     def __init__(
             self,
             env_name: str = None,
-            map_json: str = None,
             map_txt: str = None,
             map_collection: SokobanDataLoader = None,
         ) -> None:
 
         self.env = gym.make(
             id=env_name,
-            map_json=map_json,
             map_txt=map_txt,
             map_collection=map_collection,
         )
@@ -71,5 +69,5 @@ if __name__ == "__main__":
     )
 
     # launch the interface
-    game.launch(share=True)
+    game.launch(share=False)
 

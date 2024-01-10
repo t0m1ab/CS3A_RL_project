@@ -37,6 +37,12 @@ class SokobanRenderingEngine():
 
     ELEMENT_SIZE = 16
 
+    if not os.path.exists(DEFAULT_DATAPATH): # check if data path exists
+        raise ValueError(f"Data path {DEFAULT_DATAPATH} does not exist.")
+    
+    if not os.path.isfile(os.path.join(DEFAULT_DATAPATH, SYMBOLS_MATCHING[PLAYER_ID])): # create alpha image for the player
+        create_alpha_image(os.path.join(DEFAULT_DATAPATH, "player.png"))
+
     def __init__(
             self,
             data_path: str = None,
@@ -100,9 +106,6 @@ class SokobanRenderingEngine():
 if __name__ == "__main__":
 
     from dataloaders import MySokobanLoader
-
-    # create alpha image for the player
-    create_alpha_image("surface/player.png")
 
     # load a map
     easy_custom_levels = MySokobanLoader(level="easy", file_id=0)

@@ -3,12 +3,12 @@ from gymnasium import Env
 from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
-# from .room_utils import generate_room
-# from .render_utils import room_to_rgb, room_to_tiny_world_rgb
+from dataloaders import SokobanDataLoader
+from my_render_utils import SokobanRenderingEngine
 
 
 def generate_map(map_dim: int, num_boxes: int, gen_steps: int):
-    fake_map = np.zeros(map_dim)
+    fake_map = np.zeros(map_dim, dtype=np.uint8)
     fake_map[1,4] = 5
     return fake_map
 
@@ -50,9 +50,6 @@ class SokobanEnv(Env):
     RENDERING_MODES = [
         "rgb_array", 
         "human", 
-        "tiny_rgb_array", 
-        "tiny_human", 
-        "raw",
     ]
 
     CELL_DIM = 16 # length of the edge of a square cell for visualization
@@ -60,12 +57,12 @@ class SokobanEnv(Env):
     def __init__(
             self,
             map_json: str = None,
-            map_txt: np.ndarray = None,
+            map_txt: str = None,
+            map_collection: SokobanDataLoader = None,
             map_dim: tuple = (10, 10),
             num_boxes: int = 1,
             gen_steps: int = 120,
             max_steps: int = None,
-            # reset: bool = True,
         ):
         """
         INPUTS:
@@ -89,22 +86,35 @@ class SokobanEnv(Env):
         # maximum number of steps allowed before truncation (no limit if None)
         self.max_steps = max_steps
 
-        # build the map
-        self.map = None
-        if map_json is not None and map_txt is not None:
-            raise ValueError("Only one of map_json and map_txt can be specified.")
-        if map_json is not None:
-            self.map = self.__load_map_from_json(filepath=map_json)
+        self.map_collection = None
+        self.map_id = 0
+
+        if map_collection is not None: # load a collection of maps
+
+            if not isinstance(map_collection, SokobanDataLoader):
+                raise ValueError(f"map_collection must be a SokobanDataLoader but is a {type(map_collection)}.")
+            self.map_collection = map_collection
+            self.map_collection.set_auto_extract_player(False)
+            self.map = self.map_collection[self.map_id]
             self.map_dim = self.map.shape
-        if map_txt is not None:
-            self.map = self.__load_map_from_txt(filepath=map_txt)
-            self.map_dim = self.map.shape
-        if self.map is None:
-            self.map_dim = map_dim
-            if self.map_dim is None or self.num_boxes is None:
-                raise ValueError("Either a map file or map_dim must be specified.")
-            self.map = generate_map(map_dim=self.map_dim, num_boxes=self.num_boxes, gen_steps=self.gen_steps)
-        
+    
+        else: # load a single map
+
+            self.map = None
+            if map_json is not None and map_txt is not None:
+                raise ValueError("Only one of map_json and map_txt can be specified.")
+            if map_json is not None:
+                self.map = self.__load_map_from_json(filepath=map_json)
+                self.map_dim = self.map.shape
+            if map_txt is not None:
+                self.map = self.__load_map_from_txt(filepath=map_txt)
+                self.map_dim = self.map.shape
+            if self.map is None:
+                self.map_dim = map_dim
+                if self.map_dim is None or self.num_boxes is None:
+                    raise ValueError("Either a map file or map_dim must be specified.")
+                self.map = generate_map(map_dim=self.map_dim, num_boxes=self.num_boxes, gen_steps=self.gen_steps)
+            
         # save the initial map and don't modify the original
         self.init_map  = self.map.copy()
         self.player_position = self.__get_player_position()
@@ -116,9 +126,9 @@ class SokobanEnv(Env):
             Box(low=0, high=len(SokobanEnv.TYPE_LOOKUP)-1, shape=(map_dim[0], map_dim[1]), dtype=np.uint8),
             Tuple((Discrete(map_dim[0]), Discrete(map_dim[1]))),
         )) # Box = map without player | Tuple = player position in the map
-        
-        # if reset:
-        #     self.reset()
+
+        # initialize the rendering engine
+        self.rendering_engine = SokobanRenderingEngine()
 
     def __load_map_from_json(self, filepath: str):
         return np.zeros((42,42))
@@ -142,18 +152,34 @@ class SokobanEnv(Env):
         """
         Reset the environment to the initial state of the map.
         """
-        self.map = self.init_map.copy()
+        self.map = self.init_map.copy().astype(np.uint8)
         self.boxes_on_target = 0
         self.last_reward = 0
         self.num_env_steps = 0
         self.player_position = self.__get_player_position()
         self.map[self.player_position] = 1 # virtually free the cell where the player is
     
-    def reset(self) -> None:
+    def reset(self, mode: str = "random", seed: int = None, options: dict = None) -> None:
         """
-        Reset the environment to the initial state of the map.
+        Reset the environment using another map is a map_collection is given.
+        Else just perform a reset_episode().
         """
+        
+        if seed is not None:
+            self.seed(seed)
+        
+        if self.map_collection is not None:
+            if mode == "random":
+                self.map_id = np.random.randint(0, len(self.map_collection))
+            elif mode == "next":
+                self.map_id = (self.map_id + 1) % len(self.map_collection)
+            else:
+                raise ValueError(f"Invalid mode: {mode}")
+            self.init_map = self.map_collection[self.map_id].copy().astype(np.uint8)
+        
         self.reset_episode()
+
+        return (self.map, self.player_position), {}
 
     def seed(self, seed=None):
         self.np_random, seed = seeding.np_random(seed)
@@ -273,45 +299,28 @@ class SokobanEnv(Env):
 
         return (self.map, self.player_position), self.last_reward, terminated, truncated, info
 
-    def render(self, mode='raw', close=None, scale=1):
-
-        raise NotImplementedError("Need to check things before...")
-    
-        # assert mode in RENDERING_MODES
-
-        # img = self.get_image(mode, scale)
-
-        # if 'rgb_array' in mode:
-        #     return img
-
-        # #elif 'human' in mode:
-        # #    from gym.envs.classic_control import rendering
-        # #    if self.viewer is None:
-        # #        self.viewer = rendering.SimpleImageViewer()
-        # #    self.viewer.imshow(img)
-        # #    return self.viewer.isopen
-
-        # if mode=='raw':
-        #     arr_walls = (self.room_fixed == 0).view(np.int8)
-        #     arr_goals = (self.room_fixed == 2).view(np.int8)
-        #     arr_boxes = ((self.room_state == 4) + (self.room_state == 3)).view(np.int8)
-        #     arr_player = (self.room_state == 5).view(np.int8)
-
-        #     return arr_walls, arr_goals, arr_boxes, arr_player
-
-        # else:
-        #     super(SokobanEnv, self).render(mode=mode)  # just raise an exception
-
-    def get_image(self, mode, scale=1):
-
-        raise NotImplementedError("Need to check things before...")
+    def render(self, mode: str = None):
+        """ Only mode "human" is supported for now and is the default rendering given by the engine. """
         
-        # if mode.startswith('tiny_'):
-        #     img = room_to_tiny_world_rgb(self.room_state, self.room_fixed, scale=scale)
-        # else:
-        #     img = room_to_rgb(self.room_state, self.room_fixed)
+        image = self.get_image(mode=mode)
+        image.show()
 
-        # return img
+    def get_image(self, mode: str = None):
+        """ Only mode "human" is supported for now and is the default rendering given by the engine. """
+
+        if mode is None:
+            mode = "human"
+        
+        if mode not in SokobanEnv.RENDERING_MODES:
+            raise ValueError(f"Invalid rendering mode: {mode}")
+
+        image = self.rendering_engine.create_scene(
+            map=self.map,
+            player_position=self.player_position,
+            output_format="image",
+        )
+
+        return image
 
     def get_action_lookup(self):
         return SokobanEnv.ACTION_LOOKUP

@@ -20,7 +20,7 @@ def sokoban_datafile_parser(raw_content: str, symbols_matching: dict):
         line = line.strip(" ")
         if line.startswith(";"):
             if len(rows) > 0: # add stored level data to the levels dict
-                levels[level_id] = np.array(rows, dtype=np.int8)
+                levels[level_id] = np.array(rows, dtype=np.uint8)
                 rows = []
             level_id = int(line.split(";")[-1])
         elif len(line) > 0: # data line
@@ -61,8 +61,13 @@ class SokobanDataLoader():
 
         self.map_dim = self.levels[0].shape
         self.n_levels = len(self.levels)
+        self.auto_extract_player = True
     
-    def __extract_player(self, map: np.ndarray):
+    def set_auto_extract_player(self, extract: bool) -> None:
+        """ Set whether the player should be automatically extracted from the map when fetching the map with __getitem__(). """
+        self.auto_extract_player = extract
+    
+    def __extract_player(self, map: np.ndarray) -> tuple[tuple[int,int], np.ndarray]:
 
         if not self.player_id in map:
             raise ValueError("Player not found in the map.")
@@ -77,12 +82,18 @@ class SokobanDataLoader():
         
         return coords, map
 
-    def __getitem__(self, game_id: int):
+    def __getitem__(self, game_id: int) -> tuple[tuple[int,int], np.ndarray] | np.ndarray:
 
         if not game_id in self.levels:
             raise ValueError(f"Game ID {game_id} does not exist in levels file {self.levels_filepath}")
 
-        return self.__extract_player(self.levels[game_id].copy())
+        if self.auto_extract_player:
+            return self.__extract_player(self.levels[game_id].copy())
+        else:
+            return self.levels[game_id].copy()
+    
+    def __len__(self) -> int:
+        return self.n_levels
 
 
 class DeepMindBoxobanLoader(SokobanDataLoader):
@@ -187,7 +198,6 @@ if __name__ == "__main__":
     # print(rand_level)
     assert rand_level.shape == easy_custom_levels.map_dim
     assert rand_level[player_position] == 1
-
 
 
 

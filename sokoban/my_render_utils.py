@@ -59,7 +59,12 @@ class SokobanRenderingEngine():
                 raise ValueError(f"File {filepath} does not exist.")
             self.elements[id] = Image.open(filepath).convert("RGBA")
         
-    def __create_scene(self, map: np.ndarray, player_position: tuple[int,int] = None, output_format: str = None):
+    def create_scene(
+            self, 
+            map: np.ndarray, 
+            player_position: tuple[int,int] = None, 
+            output_format: str = None
+        ):
         """ Create the matrix representing the scene of map. """
             
         map_dim = map.shape
@@ -85,7 +90,7 @@ class SokobanRenderingEngine():
     
     def save_scene(self, map: np.ndarray, player_position: tuple[int,int] = None, filepath: str = None) -> None:
         """ Save the scene of map to filepath. """
-        scene_image = self.__create_scene(map, player_position, output_format="image") # create scene
+        scene_image = self.create_scene(map, player_position, output_format="image") # create scene
         filepath = filepath if filepath is not None else "outputs/scene.png" # set default filepath
         Path(filepath).parent.mkdir(parents=True, exist_ok=True) # create directory
         scene_image.save(filepath) # save scene

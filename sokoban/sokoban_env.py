@@ -1,11 +1,12 @@
 import os
 import numpy as np
+from aenum import Enum, NoAlias
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
 from dataloaders import SokobanDataLoader, sokoban_datafile_parser
-from my_render_utils import SokobanRenderingEngine
+from sokoban.render_utils import SokobanRenderingEngine
 
 
 def generate_map(map_dim: int, num_boxes: int, gen_steps: int):
@@ -43,12 +44,19 @@ class SokobanEnv(Env):
         7: "move right",
     }
 
-    REWARDS = {
-        "step": -0.1,
-        "box_on_target": 1,
-        "box_off_target": -1,
-        "done": 10,
-    }
+    class ActionResult(Enum):
+        """ Enum containing all the possible undirected result of actions 
+            in the environement and their associated reward value. """
+        _settings_ = NoAlias # avoid grouping items with same values (for NULL and STEP)
+        NULL = -0.1
+        STEP = -0.1
+        BOX_ON_TARGET = 1.0
+        BOX_OFF_TARGET = -1.0
+        DONE = 10.0
+
+        @classmethod
+        def to_dict(cls):
+            return {x.name: x.value for x in cls}
 
     RENDERING_MODES = [
         "rgb_array", 
@@ -65,6 +73,8 @@ class SokobanEnv(Env):
             num_boxes: int = 1,
             gen_steps: int = 120,
             max_steps: int = None,
+            merge_move_push: bool = False,
+            reset_mode: str = None,
         ):
         """
         INPUTS:
@@ -74,6 +84,8 @@ class SokobanEnv(Env):
             - num_boxes: number of boxes to put in the generated map
             - gen_steps: maximum number of steps for map generation
             - max_steps: maximum number of steps for an episode
+            - merge_move_push: if True, move actions allow agent to push boxes just like push actions
+            - reset_mode: mode for the reset method, either "random" or "next"
         """
 
         ## set up a map
@@ -114,6 +126,11 @@ class SokobanEnv(Env):
         self.last_reward = 0 # last reward obtained
         self.num_env_steps = 0 # counter of the number of steps taken from the initial state
         self.max_steps = max_steps # maximum number of steps allowed before truncation (no limit if None)
+        self.merge_move_push = merge_move_push # if True, move actions allow agent to push boxes just like push actions
+        if reset_mode not in ["random", "next"]: # mode for the reset method, either "random" or "next"
+            self.reset_mode = "random"
+        else:
+            self.reset_mode = reset_mode
 
         ## initialize the rendering engine
         self.rendering_engine = SokobanRenderingEngine()
@@ -169,7 +186,7 @@ class SokobanEnv(Env):
         self.num_env_steps = 0
         self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
     
-    def reset(self, mode: str = "random", seed: int = None, options: dict = None) -> tuple[tuple[np.ndarray, tuple[int,int]], dict]:
+    def reset(self, seed: int = None, options: dict = None) -> tuple[tuple[np.ndarray, tuple[int,int]], dict]:
         """
         Reset the environment using another map is a map_collection is given.
         Otherwise just perform a reset_episode().
@@ -179,12 +196,10 @@ class SokobanEnv(Env):
             self.seed(seed)
         
         if self.map_collection is not None:
-            if mode == "random":
+            if self.reset_mode == "random":
                 self.map_id = np.random.randint(0, len(self.map_collection))
-            elif mode == "next":
+            elif self.reset_mode == "next":
                 self.map_id = (self.map_id + 1) % len(self.map_collection)
-            else:
-                raise ValueError(f"Invalid mode: {mode}")
             self.init_map = self.map_collection[self.map_id].copy().astype(np.uint8)
         
         self.reset_episode()
@@ -226,11 +241,11 @@ class SokobanEnv(Env):
         """ Returns True if the cell contains a box, False otherwise. """
         return self.map[cell] in [3,4]
 
-    def __push(self, cell_push: tuple, cell_after: tuple) -> float:
+    def __push(self, cell_push: tuple, cell_after: tuple) -> ActionResult:
         """
         Pushes the box in the direction of the action, if possible.
         If there is no box in the direction of the action, try to move.
-        Returns the reward obtained from the action.
+        Returns the result of the action which contains itself the reward.
         """
 
         if self.__contains_box(cell_push) and self.__is_free_cell(cell_after): # push box
@@ -240,36 +255,39 @@ class SokobanEnv(Env):
                 if self.map[cell_push] == 3: # box on target
                     self.map[cell_push] = 2
                     self.boxes_on_target -= 1
-                    reward = SokobanEnv.REWARDS["box_off_target"]
+                    result = SokobanEnv.ActionResult.BOX_OFF_TARGET
                 else: # box not on target
                     self.map[cell_push] = 1
-                    reward = SokobanEnv.REWARDS["step"]
+                    result = SokobanEnv.ActionResult.STEP
             
             elif self.map[cell_after] == 2: # box target
                 self.map[cell_after] = 3
                 if self.map[cell_push] == 3: # box on target
                     self.map[cell_push] = 2
-                    reward = SokobanEnv.REWARDS["step"] # no positive gain from pushing box from target to target
+                    result = SokobanEnv.ActionResult.STEP # no positive gain from pushing box from target to target
                 else: # box not on target
                     self.map[cell_push] = 1
-                    reward = SokobanEnv.REWARDS["box_on_target"]
+                    result = SokobanEnv.ActionResult.BOX_ON_TARGET
                 self.boxes_on_target += 1
                 if self.boxes_on_target == self.num_boxes:
-                    reward = SokobanEnv.REWARDS["done"]
+                    result = SokobanEnv.ActionResult.DONE
             
             else:
                 raise ValueError(f"Cell {cell_after} was supposed to be free but is {self.map[cell_after]}...")
             
             self.player_position = cell_push
-            return reward
+            return result
 
         elif self.__contains_box(cell_push): # impossible to push box
-            return SokobanEnv.REWARDS["step"]
+            return SokobanEnv.ActionResult.STEP
 
         else: # no box to push
-            return self.__move(cell_move=cell_push)
+            if self.merge_move_push:
+                return self.__move(cell_move=cell_push) # move instead
+            else:
+                return SokobanEnv.ActionResult.NULL
 
-    def __move(self, cell_move: tuple) -> float:
+    def __move(self, cell_move: tuple) -> ActionResult:
         """
         Moves the player in the direction of the action, if possible.
         Returns the reward obtained from the action.
@@ -277,21 +295,26 @@ class SokobanEnv(Env):
 
         if self.__is_free_cell(cell_move):
             self.player_position = cell_move
-        
-        return SokobanEnv.REWARDS["step"]
+            return SokobanEnv.ActionResult.STEP
+        else:
+            return SokobanEnv.ActionResult.NULL
 
     def step(self, action: int):
 
         if not action in SokobanEnv.ACTION_LOOKUP.keys():
             raise ValueError("Invalid action: {}".format(action))
         
+        if self.merge_move_push: # push and move actions are merged so push by default
+            action = action % 4
+        
         cell_ahead, cell_after = self.__get_ahead_cells(action)
 
         if action < 4: # push action
-            self.last_reward = self.__push(cell_push=cell_ahead, cell_after=cell_after)
+            action_result = self.__push(cell_push=cell_ahead, cell_after=cell_after)
         else: # move action
-            self.last_reward = self.__move(cell_move=cell_ahead, cell_after=cell_after)
-  
+            action_result = self.__move(cell_move=cell_ahead)
+
+        self.last_reward = action_result.value
         self.num_env_steps += 1
         
         terminated = self.__is_done()
@@ -299,8 +322,9 @@ class SokobanEnv(Env):
 
         info = {
             "action_name": SokobanEnv.ACTION_LOOKUP[action],
-            # "action_moved_player": player_moved,
-            # "action_moved_box": box_moved,
+            "action_result": action_result.name,
+            "player_moved": action_result.name != "NULL",
+            "box_moved": (action_result.name != "STEP") and (action_result.name != "NULL"),
         }
         if terminated or truncated:
             info["steps_used"] = self.num_env_steps
@@ -338,7 +362,7 @@ class SokobanEnv(Env):
         return SokobanEnv.TYPE_LOOKUP
     
     def get_rewards(self):
-        return SokobanEnv.REWARDS
+        return SokobanEnv.ActionResult.to_dict()
 
 
 if __name__ == "__main__":

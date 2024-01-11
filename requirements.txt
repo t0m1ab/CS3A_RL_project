@@ -3,3 +3,6 @@ matplotlib
 seaborn
 tqdm
 gymnasium
+gradio
+aenum
+pillow

@@ -6,7 +6,7 @@ from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
 from dataloaders import SokobanDataLoader, sokoban_datafile_parser
-from sokoban.render_utils import SokobanRenderingEngine
+from render_utils import SokobanRenderingEngine
 
 
 def generate_map(map_dim: int, num_boxes: int, gen_steps: int):

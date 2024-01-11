@@ -24,7 +24,7 @@ class SokobanEnv(Env):
 
     PLAYER_ID = 5
 
-    TYPE_LOOKUP = {
+    CELL_LOOKUP = {
         0: "wall",
         1: "empty space",
         2: "box target",
@@ -63,6 +63,11 @@ class SokobanEnv(Env):
         "human", 
     ]
 
+    RESET_MODES = [
+        "random",
+        "next",
+    ]
+
     CELL_DIM = 16 # length of the edge of a square cell for visualization
 
     def __init__(
@@ -73,19 +78,19 @@ class SokobanEnv(Env):
             num_boxes: int = 1,
             gen_steps: int = 120,
             max_steps: int = None,
-            merge_move_push: bool = False,
             reset_mode: str = None,
+            merge_move_push: bool = False,
         ):
         """
         INPUTS:
-            - map_txt: path to a txt file containing a map with the same symbols as in SokobanEnv.TYPE_LOOKUP
+            - map_txt: path to a txt file containing a map with the same symbols as in SokobanEnv.CELL_LOOKUP
             - map_collection: SokobanDataLoader containing a collection of maps
             - map_dim: tuple containing the dimensions of the map to generate
             - num_boxes: number of boxes to put in the generated map
             - gen_steps: maximum number of steps for map generation
             - max_steps: maximum number of steps for an episode
-            - merge_move_push: if True, move actions allow agent to push boxes just like push actions
             - reset_mode: mode for the reset method, either "random" or "next"
+            - merge_move_push: if True, reduce the action space to 4 actions keeping only push actions and allowing player to move with it
         """
 
         ## set up a map
@@ -111,15 +116,6 @@ class SokobanEnv(Env):
         self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
         self.map_dim = self.map.shape
 
-        ## action_space: int for each action
-        self.action_space = Discrete(len(SokobanEnv.ACTION_LOOKUP))
-        
-        ## observation_space: Box = map without player | Tuple = player position in the map
-        self.observation_space = Tuple((
-            Box(low=0, high=len(SokobanEnv.TYPE_LOOKUP)-1, shape=(map_dim[0], map_dim[1]), dtype=np.uint8),
-            Tuple((Discrete(map_dim[0]), Discrete(map_dim[1]))),
-        ))
-
         ## set map and episode attributes
         self.num_boxes = self.__count_boxes() # number of boxes in the map
         self.boxes_on_target = 0 # number of boxes correctly placed on a target
@@ -127,10 +123,21 @@ class SokobanEnv(Env):
         self.num_env_steps = 0 # counter of the number of steps taken from the initial state
         self.max_steps = max_steps # maximum number of steps allowed before truncation (no limit if None)
         self.merge_move_push = merge_move_push # if True, move actions allow agent to push boxes just like push actions
-        if reset_mode not in ["random", "next"]: # mode for the reset method, either "random" or "next"
-            self.reset_mode = "random"
-        else:
-            self.reset_mode = reset_mode
+        # mode for the reset method, either "random" or "next"
+        self.reset_mode = reset_mode if reset_mode in SokobanEnv.RESET_MODES else SokobanEnv.RESET_MODES[0]
+        # push and move actions are merged so that only push remains
+        if self.merge_move_push:
+            for action_id in range(4,8):
+                SokobanEnv.ACTION_LOOKUP.pop(action_id)
+        
+        ## action_space: int for each action
+        self.action_space = Discrete(len(SokobanEnv.ACTION_LOOKUP))
+        
+        ## observation_space: Box = map without player | Tuple = player position in the map
+        self.observation_space = Tuple((
+            Box(low=0, high=len(SokobanEnv.CELL_LOOKUP)-1, shape=(self.map_dim[0], self.map_dim[1]), dtype=np.uint8),
+            Tuple((Discrete(self.map_dim[0]), Discrete(self.map_dim[1]))),
+        ))
 
         ## initialize the rendering engine
         self.rendering_engine = SokobanRenderingEngine()
@@ -144,7 +151,7 @@ class SokobanEnv(Env):
         with open(filepath, "r") as f:
             raw_content = f.read()
 
-        symbols_matching = {str(x): x for x in SokobanEnv.TYPE_LOOKUP.keys()}
+        symbols_matching = {str(x): x for x in SokobanEnv.CELL_LOOKUP.keys()}
 
         levels = sokoban_datafile_parser(raw_content, symbols_matching=symbols_matching)
 
@@ -301,11 +308,8 @@ class SokobanEnv(Env):
 
     def step(self, action: int):
 
-        if not action in SokobanEnv.ACTION_LOOKUP.keys():
-            raise ValueError("Invalid action: {}".format(action))
-        
-        if self.merge_move_push: # push and move actions are merged so push by default
-            action = action % 4
+        if not action in SokobanEnv.ACTION_LOOKUP:
+            raise ValueError(f"Invalid action ID: {action}")
         
         cell_ahead, cell_after = self.__get_ahead_cells(action)
 
@@ -358,8 +362,8 @@ class SokobanEnv(Env):
     def get_action_lookup(self):
         return SokobanEnv.ACTION_LOOKUP
     
-    def get_type_lookup(self):
-        return SokobanEnv.TYPE_LOOKUP
+    def get_CELL_LOOKUP(self):
+        return SokobanEnv.CELL_LOOKUP
     
     def get_rewards(self):
         return SokobanEnv.ActionResult.to_dict()
@@ -378,9 +382,11 @@ if __name__ == "__main__":
             entry_point=SokobanEnv,
         )
 
-    env = gym.make(id=f"{namespace}/{env_id}")
-
-    assert env.unwrapped.num_env_steps == 0
+    env = gym.make(
+        id=f"{namespace}/{env_id}",
+        merge_move_push=False,
+        reset_mode="random"
+    )
 
     print("Sokoban environment is ready!")
 

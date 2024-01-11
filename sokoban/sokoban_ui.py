@@ -167,24 +167,24 @@ if __name__ == "__main__":
     ## Parse the arguments
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "-m",
-        "--merge_move_push",
-        action="store_true",
-        default=False,
-        help="If true, merge move and push actions",
-    )
-    parser.add_argument(
         "-r",
         "--reset_mode",
         type=str,
         choices=["random", "next"],
         default="random",
-        help="Specify the reset mode and must be in {random,next}",
+        help="Specify the reset mode when a new map is picked in the collection",
+    )
+    parser.add_argument(
+        "-m",
+        "--merge_move_push",
+        action="store_true",
+        default=False,
+        help="If true, merge move and push actions (see SokobanEnv __init__() docstring)",
     )
     args = parser.parse_args()
     env_kwargs = {
-        "merge_move_push": args.merge_move_push, 
         "reset_mode": args.reset_mode,
+        "merge_move_push": args.merge_move_push, 
     }
 
     ## Register the Sokoban environment
@@ -194,13 +194,13 @@ if __name__ == "__main__":
         gym.register(id=env_id, entry_point=SokobanEnv)
     
     ## Load a Sokoban map collection
-    sokoban_data = MySokobanLoader(level="easy", file_id=0)
-    # sokoban_data = DeepMindBoxobanLoader(level="medium", file_id=0)
+    # map_collection = MySokobanLoader(level="easy", file_id=0)
+    map_collection = DeepMindBoxobanLoader(level="medium", file_id=0)
 
     ## Create the UI
     game = Interface(
         env_name=f"{namespace}/{env_id}",
-        map_collection=sokoban_data,
+        map_collection=map_collection,
         env_kwargs=env_kwargs,
     )
 

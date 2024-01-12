@@ -126,12 +126,10 @@ class SokobanEnv(Env):
         # mode for the reset method, either "random" or "next"
         self.reset_mode = reset_mode if reset_mode in SokobanEnv.RESET_MODES else SokobanEnv.RESET_MODES[0]
         # push and move actions are merged so that only push remains
-        if self.merge_move_push:
-            for action_id in range(4,8):
-                SokobanEnv.ACTION_LOOKUP.pop(action_id)
+        self.action_lookup = {i: SokobanEnv.ACTION_LOOKUP[i] for i in range(4 if self.merge_move_push else 8)}
         
         ## action_space: int for each action
-        self.action_space = Discrete(len(SokobanEnv.ACTION_LOOKUP))
+        self.action_space = Discrete(len(self.action_lookup))
         
         ## observation_space: Box = map without player | Tuple = player position in the map
         self.observation_space = Tuple((
@@ -308,7 +306,7 @@ class SokobanEnv(Env):
 
     def step(self, action: int):
 
-        if not action in SokobanEnv.ACTION_LOOKUP:
+        if not action in self.action_lookup:
             raise ValueError(f"Invalid action ID: {action}")
         
         cell_ahead, cell_after = self.__get_ahead_cells(action)
@@ -325,7 +323,7 @@ class SokobanEnv(Env):
         truncated = False if self.max_steps is None else (self.num_env_steps >= self.max_steps)
 
         info = {
-            "action_name": SokobanEnv.ACTION_LOOKUP[action],
+            "action_name": self.action_lookup[action],
             "action_result": action_result.name,
             "player_moved": action_result.name != "NULL",
             "box_moved": (action_result.name != "STEP") and (action_result.name != "NULL"),
@@ -360,7 +358,7 @@ class SokobanEnv(Env):
         image.show()
 
     def get_action_lookup(self):
-        return SokobanEnv.ACTION_LOOKUP
+        return self.action_lookup
     
     def get_CELL_LOOKUP(self):
         return SokobanEnv.CELL_LOOKUP

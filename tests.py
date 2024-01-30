@@ -9,6 +9,11 @@ from cs3arl.sokoban.sokoban_env import main as sokoban_env_main
 from cs3arl.sokoban.dataloaders import main as dataloaders_main
 from cs3arl.sokoban.render_utils import main as render_utils_main
 
+from cs3arl.deeprl.buffers import main as buffers_main
+from cs3arl.deeprl.networks import main as networks_main
+from cs3arl.deeprl.agents import main as agents_main
+from cs3arl.deeprl.trainers import main as trainers_main
+
 print(">>> Testing blackjack code...")
 agents_main()
 trainers_main()
@@ -18,5 +23,11 @@ print("\n>>> Testing sokoban code...")
 sokoban_env_main()
 dataloaders_main()
 render_utils_main()
+
+print("\n>>> Testing deeprl code...")
+buffers_main()
+networks_main()
+agents_main()
+trainers_main()
 
 print("\n>>> ALL TESTS PASSED! <<<")

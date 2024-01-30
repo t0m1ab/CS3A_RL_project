@@ -1,26 +1,210 @@
 import os
 from pathlib import Path
+import matplotlib.pyplot as plt
+from itertools import count
 import gymnasium as gym
+import torch
+from tqdm import tqdm
 
-from cs3arl.sokoban.sokoban_env import SokobanEnv
+import cs3arl
+MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
-if __name__ == "__main__":
+from cs3arl.deeprl.agents import DeepRLAgent, DQNAgent
+# from cs3arl.sokoban.sokoban_env import SokobanEnv
 
-    namespace = "sokoban"
-    env_id = "sokoban-v0"
 
-    with gym.envs.registration.namespace(ns=namespace):
-        gym.register(
-            id=env_id,
-            entry_point=SokobanEnv,
+class DeepTrainer():
+    """ Deep RL trainer """
+
+    DEVICES = ["cpu", "cuda", "mps"]
+
+    DEFAULT_PATH = os.path.join(MODULE_PATH, "deeprl/")
+
+    def __init__(self, device: str, save_dir: str, track_results: bool) -> None:
+        
+        self.__name__ = "DeepTrainer"
+        self.set_device("cpu" if device is None else device)
+        self.save_dir = os.path.join(DeepTrainer.DEFAULT_PATH, "outputs/") if save_dir is None else save_dir
+
+        self.env = None
+        self.env_name = None
+        self.agent = None
+        self.experiment_name = None
+        self.track_results = track_results ### MYTODO: implement this to show plots during training
+    
+    def set_device(self, device: str) -> None:
+
+        self.device = device
+        
+        if self.device not in self.DEVICES:
+            raise ValueError(f"Device {self.device} is not supported. Please choose one of {self.DEVICES}.")
+        
+        if self.device == "cuda" and not torch.cuda.is_available():
+            print("Warning: CUDA is not available. Using CPU instead.")
+            self.device = "cpu"
+        
+        if self.device == "mps" and not(torch.backends.mps.is_available() and torch.backends.mps.is_built()):
+            print("Warning: MPS is not available. Using CPU instead.")
+            self.device = "cpu"
+
+
+class DQNTrainer(DeepTrainer):
+    
+    def __init__(
+            self,
+            batch_size: int = 128,
+            gamma: float = 0.99,
+            eps_start: float = 0.9,
+            eps_end: float = 0.05,
+            eps_decay: float = 100,
+            tau: float = 5e-3,
+            learning_rate: float = 1e-4,
+            n_episodes: int = 50, # low by default because can be slow if CPU
+            memory_capacity: int = 10000,
+            device: str = None,
+            save_dir: str = None,
+            track_results: bool = True,
+        ) -> None:
+
+        super().__init__(device, save_dir, track_results)
+
+        self.__name__ = "DQNTrainer"
+        self.bs = batch_size
+        self.gamma = gamma
+        self.eps_start = eps_start
+        self.eps_end = eps_end
+        self.eps_decay = eps_decay
+        self.tau = tau
+        self.lr = learning_rate
+        self.n_episodes = n_episodes
+        self.memory_capacity = memory_capacity
+        self.episode_durations = []
+    
+    def train(self, env: gym.Env, experiment_name: str = None) -> DeepRLAgent:
+        
+        self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
+        self.env_name = self.env.unwrapped.spec.id
+
+        obs_space_size = len(self.env.reset()[0]) ### MYTODO: adapt to the environment
+        action_space_size = self.env.action_space.n ### MYTODO: adapt to the environment
+
+        self.agent = DQNAgent(
+            obs_space_size = obs_space_size,
+            action_space_size = action_space_size,
+            eps_start = self.eps_start,
+            eps_end = self.eps_end,
+            eps_decay = self.eps_decay,
+            learning_rate = self.lr,
+            gamma = self.gamma,
+            tau = self.tau,
+            batch_size = self.bs,
+            memory_capacity = self.memory_capacity,
+            device = self.device,
         )
 
-    env = gym.make(
-        id=f"{namespace}/{env_id}",
-        merge_move_push=False,
-        reset_mode="random"
+        self.experiment_name = experiment_name if experiment_name is not None else "DQN"
+
+        loop_log = f"Training DQN on {self.env_name} for {self.n_episodes} episodes"
+        for episode_idx in tqdm(range(self.n_episodes), desc=loop_log):
+
+            # Initialize the environment and get its state
+            state, info = self.env.reset()
+
+            ### MYTODO: convert state to tensor representation (list of values)
+            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            
+            # infinite loop with integer counter that breaks when the episode is done
+            for t in count():
+
+                action = self.agent.get_action(self.env, state_tensor)
+
+                observation, reward, terminated, truncated, _ = self.env.step(action.item())
+
+                reward_tensor = torch.tensor([reward], device=self.device)
+
+                done = terminated or truncated
+
+                if terminated:
+                    next_state_tensor = None
+                else:
+                    next_state_tensor = torch.tensor(observation, dtype=torch.float32, device=self.device).unsqueeze(0)
+
+                # Store the transition in memory
+                self.agent.memory.push(state_tensor, action, next_state_tensor, reward_tensor)
+
+                # Move to the next state
+                state_tensor = next_state_tensor
+
+                # Perform one step of the optimization (on the policy network)
+                self.agent.update_policy_net() # optimize_model()
+
+                # Soft update of the target network's weights
+                # θ′ ← τ θ + (1 −τ )θ′
+                self.agent.update_target_net()
+
+                if done:
+                    self.episode_durations.append(t + 1)
+                    # self.plot_durations()
+                    break
+        
+        return self.agent
+    
+    def plot_durations(self, show_result=False):
+        """
+        Plot the duration of each episode along the training.
+        """
+
+        plt.figure(1)
+        durations_t = torch.tensor(self.episode_durations, dtype=torch.float)
+        if show_result:
+            plt.title('Result')
+        else:
+            plt.clf()
+            plt.title('Training...')
+        plt.xlabel('Episode')
+        plt.ylabel('Duration')
+        plt.plot(durations_t.numpy())
+        # Take 100 episode averages and plot them too
+        if len(durations_t) >= 100:
+            means = durations_t.unfold(0, 100, 1).mean(1).view(-1)
+            means = torch.cat((torch.zeros(99), means))
+            plt.plot(means.numpy())
+        
+        if show_result:
+            Path(self.save_dir).mkdir(parents=True, exist_ok=True)
+            filename = os.path.join(self.save_dir, f"{self.experiment_name}.png")
+            plt.savefig(filename)
+
+        # plt.pause(0.001)  # pause a bit so that plots are updated
+        # if is_ipython:
+        #     if not show_result:
+        #         display.display(plt.gcf())
+        #         display.clear_output(wait=True)
+        #     else:
+        #         display.display(plt.gcf())
+
+
+def main():
+
+    import gymnasium as gym
+
+    env = gym.make("CartPole-v1")
+
+    trainer = DQNTrainer(
+        batch_size=128,
+        gamma=0.99,
+        eps_start=0.9,
+        eps_end=0.05,
+        eps_decay=100,
+        tau=5e-3,
+        learning_rate=1e-4,
+        n_episodes=50,
+        memory_capacity=10000,
+        device="cpu",
     )
 
-    print("Sokoban environment is ready!")
+    print(f"{trainer.__name__} is ready!")
 
-    # gym.pprint_registry()
+
+if __name__ == "__main__":
+    main()

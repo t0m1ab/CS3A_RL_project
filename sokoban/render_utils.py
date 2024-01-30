@@ -3,6 +3,9 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+import cs3arl
+MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
+
 
 def create_alpha_image(filepath: str) -> None:
     """ Create a player image with alpha channel for black background transparency. """
@@ -24,7 +27,7 @@ class SokobanRenderingEngine():
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = "surface/"
+    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/surface/")
     
     SYMBOLS_MATCHING = {
         0: "wall.png",
@@ -103,9 +106,9 @@ class SokobanRenderingEngine():
         scene_image.save(filepath) # save scene
 
 
-if __name__ == "__main__":
+def main():
 
-    from dataloaders import MySokobanLoader
+    from cs3arl.sokoban.dataloaders import MySokobanLoader
 
     # load a map
     easy_custom_levels = MySokobanLoader(level="easy", file_id=0)
@@ -113,5 +116,12 @@ if __name__ == "__main__":
 
     # render the map
     rendering_engine = SokobanRenderingEngine()
-    rendering_engine.save_scene(sokoban_map, player_position, filepath="outputs/test_scene.png")
+    rendering_engine.save_scene(
+        sokoban_map, 
+        player_position, 
+        filepath=os.path.join(MODULE_PATH, "sokoban/outputs/test_scene.png"),
+    )
 
+
+if __name__ == "__main__":
+    main()

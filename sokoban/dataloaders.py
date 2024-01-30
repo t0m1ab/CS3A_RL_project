@@ -1,6 +1,9 @@
 import os
 import numpy as np
 
+import cs3arl
+MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
+
 
 def create_datafilename(id: int, n_digits: int = 3):
     """ id=42 --> "042.txt" if n_digits=3 """
@@ -100,7 +103,7 @@ class DeepMindBoxobanLoader(SokobanDataLoader):
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = "boxoban-levels/"
+    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/", "boxoban-levels/")
 
     DEFAULT_LEVELS = ["medium", "hard", "unfiltered"]
     
@@ -138,7 +141,7 @@ class MySokobanLoader(SokobanDataLoader):
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = "my-sokoban-levels/"
+    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/", "my-sokoban-levels/")
 
     DEFAULT_LEVELS = ["easy", "medium", "hard"]
     
@@ -171,7 +174,7 @@ class MySokobanLoader(SokobanDataLoader):
         super().__init__(**kwargs)
 
 
-if __name__ == "__main__":
+def main():
 
     ## DEEP MIND DATA loader
 
@@ -200,9 +203,5 @@ if __name__ == "__main__":
     assert rand_level[player_position] == 1
 
 
-
-
-        
-
-
-        
+if __name__ == "__main__":
+    main()

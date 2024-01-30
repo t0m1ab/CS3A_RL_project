@@ -142,7 +142,7 @@ class SARSAAgent(BlackjackAgent):
         self.q_values[state][action] = q_value + self.lr * td_error
     
 
-if __name__ == "__main__":
+def main():
 
     # Test the creation of an agent following the rules from Sutton & Barto
     import gymnasium as gym
@@ -181,3 +181,5 @@ if __name__ == "__main__":
     print("SARSA` agent is ready!")
 
 
+if __name__ == "__main__":
+    main()

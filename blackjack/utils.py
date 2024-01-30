@@ -1,4 +1,8 @@
+import os
 import numpy as np
+
+import cs3arl
+MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
 
 def thorp_basic_strategy():
@@ -24,9 +28,19 @@ def thorp_basic_strategy():
     return strategy
 
 
-if __name__ == "__main__":
-
+def main():
     # Create a plot showing Thorp basic strategy
-    from visualization import create_policy_plots
+    from cs3arl.blackjack.visualization import create_policy_plots
     thorp_strat = thorp_basic_strategy()
-    create_policy_plots(thorp_strat["usable_ace"], thorp_strat["no_usable_ace"], "Thorp basic strategy", show=False, save_dir="outputs/", save=True)
+    create_policy_plots(
+        thorp_strat["usable_ace"], 
+        thorp_strat["no_usable_ace"], 
+        "Thorp basic strategy", 
+        show=False, 
+        save_dir=os.path.join(MODULE_PATH, "blackjack/outputs/"), 
+        save=True
+    )
+
+
+if __name__ == "__main__":
+    main()

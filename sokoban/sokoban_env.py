@@ -5,8 +5,8 @@ from gymnasium import Env
 from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
-from dataloaders import SokobanDataLoader, sokoban_datafile_parser
-from render_utils import SokobanRenderingEngine
+from cs3arl.sokoban.dataloaders import SokobanDataLoader, sokoban_datafile_parser
+from cs3arl.sokoban.render_utils import SokobanRenderingEngine
 
 
 def generate_map(map_dim: int, num_boxes: int, gen_steps: int):
@@ -367,7 +367,7 @@ class SokobanEnv(Env):
         return SokobanEnv.ActionResult.to_dict()
 
 
-if __name__ == "__main__":
+def main():
 
     import gymnasium as gym
 
@@ -389,3 +389,7 @@ if __name__ == "__main__":
     print("Sokoban environment is ready!")
 
     # gym.pprint_registry()
+
+
+if __name__ == "__main__":
+    main()

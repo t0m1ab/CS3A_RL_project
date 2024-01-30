@@ -6,7 +6,7 @@ Inspired from: https://gymnasium.farama.org/tutorials/training_agents/blackjack_
 
 import gymnasium as gym
 
-from trainers import QlearningTrainer, MCESTrainer, SARSATrainer
+from cs3arl.blackjack.trainers import QlearningTrainer, MCESTrainer, SARSATrainer
 
 
 def main():

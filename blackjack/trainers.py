@@ -2,8 +2,8 @@ from tqdm import tqdm
 import numpy as np
 import gymnasium as gym
 
-from agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
-from visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
+from cs3arl.blackjack.agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
+from cs3arl.blackjack.visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
 class Trainer():
@@ -193,8 +193,7 @@ class SARSATrainer(Trainer):
         return self.agent
 
 
-
-if __name__ == "__main__":
+def main():
 
     # Test the creation of a Trainer
     import gymnasium as gym
@@ -229,3 +228,7 @@ if __name__ == "__main__":
     )
 
     print("SARSA Trainer is ready!")
+
+
+if __name__ == "__main__":
+    main()

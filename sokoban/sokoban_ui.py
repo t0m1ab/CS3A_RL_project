@@ -3,8 +3,8 @@ import gradio as gr
 import gymnasium as gym
 import argparse
 
-from sokoban_env import SokobanEnv
-from dataloaders import SokobanDataLoader, DeepMindBoxobanLoader, MySokobanLoader
+from cs3arl.sokoban.sokoban_env import SokobanEnv
+from cs3arl.sokoban.dataloaders import SokobanDataLoader, DeepMindBoxobanLoader, MySokobanLoader
 
 WALL_COLOR = (176, 61, 0)
 BOX_COLOR = (215, 196, 0)

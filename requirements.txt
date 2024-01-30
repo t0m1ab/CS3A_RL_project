@@ -6,3 +6,5 @@ gymnasium
 gradio
 aenum
 pillow
+ipykernel
+torch

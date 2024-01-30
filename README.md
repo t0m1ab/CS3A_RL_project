@@ -29,7 +29,7 @@ requires = ["flit_core >=3.2,<4"]
 pip install -e .
 ``` 
 
-* Run the following command to install all requirements: 
+* Run the following command to install all dependencies: 
 ```bash
 pip install -r cs3arl/requirements.txt
 ``` 

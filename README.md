@@ -29,6 +29,11 @@ requires = ["flit_core >=3.2,<4"]
 pip install -e .
 ``` 
 
+* Run the following command to install all requirements: 
+```bash
+pip install -r cs3arl/requirements.txt
+``` 
+
 ## 1 - Learn to play Black Jack using classic RL methods
 
 * The folder [blackjack](./blackjack/) contains all the code required to train an agent how to play Black Jack using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...

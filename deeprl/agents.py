@@ -1,3 +1,5 @@
+import os
+from pathlib import Path
 import random
 import numpy as np
 import gymnasium as gym
@@ -159,6 +161,11 @@ class DQNAgent(DeepRLAgent):
             target_net_dict[key] = policy_net_dict[key]*self.tau + target_net_dict[key]*(1-self.tau)
         
         self.target_net.load_state_dict(target_net_dict)
+    
+    def save_agent(self, save_path: str, experiment_name: str = None) -> None:
+        fname = experiment_name if experiment_name is not None else self.__name__
+        Path(save_path).mkdir(parents=True, exist_ok=True)
+        torch.save(self.policy_net.state_dict(), os.path.join(save_path, f"{fname}.pt"))
 
 
 def main():

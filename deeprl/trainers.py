@@ -5,6 +5,7 @@ from itertools import count
 import gymnasium as gym
 import torch
 from tqdm import tqdm
+import json
 
 import cs3arl
 MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
@@ -20,7 +21,7 @@ class DeepTrainer():
 
     DEFAULT_PATH = os.path.join(MODULE_PATH, "deeprl/")
 
-    def __init__(self, device: str, save_dir: str, track_results: bool) -> None:
+    def __init__(self, device: str, save_dir: str, save_results: bool) -> None:
         
         self.__name__ = "DeepTrainer"
         self.set_device("cpu" if device is None else device)
@@ -30,7 +31,7 @@ class DeepTrainer():
         self.env_name = None
         self.agent = None
         self.experiment_name = None
-        self.track_results = track_results ### MYTODO: implement this to show plots during training
+        self.save_results = save_results
     
     def set_device(self, device: str) -> None:
 
@@ -46,6 +47,25 @@ class DeepTrainer():
         if self.device == "mps" and not(torch.backends.mps.is_available() and torch.backends.mps.is_built()):
             print("Warning: MPS is not available. Using CPU instead.")
             self.device = "cpu"
+        
+    def save_results_to_json(self, **kwargs) -> None:
+
+        exp_name = kwargs["experiment_name"] if "experiment_name" in kwargs else self.experiment_name
+
+        data_dict = {
+            "env": self.env_name,
+            "agent": self.agent.__name__,
+            "experiment_name": exp_name,
+        }
+
+        for key, data in kwargs.items():
+            data_dict[key] = data
+        
+        save_path = os.path.join(self.save_dir, self.experiment_name)
+        filename = f"{self.experiment_name}.json"
+        Path(save_path).mkdir(parents=True, exist_ok=True)
+        with open(os.path.join(save_path, filename), "w") as f:
+            f.write(json.dumps(data_dict, indent=4))
 
 
 class DQNTrainer(DeepTrainer):
@@ -63,10 +83,11 @@ class DQNTrainer(DeepTrainer):
             memory_capacity: int = 10000,
             device: str = None,
             save_dir: str = None,
-            track_results: bool = True,
+            save_results: bool = True,
+            n_checkpoints: int = None,
         ) -> None:
 
-        super().__init__(device, save_dir, track_results)
+        super().__init__(device, save_dir, save_results)
 
         self.__name__ = "DQNTrainer"
         self.bs = batch_size
@@ -78,7 +99,13 @@ class DQNTrainer(DeepTrainer):
         self.lr = learning_rate
         self.n_episodes = n_episodes
         self.memory_capacity = memory_capacity
+        self.n_checkpoints = n_checkpoints
         self.episode_durations = []
+    
+    def is_checkpoint_episode(self, episode_idx: int) -> bool:
+        """ Check if the current episode is a checkpoint episode which triggers save/plot methods. """
+        idx = episode_idx + 1
+        return idx % (self.n_episodes // self.n_checkpoints) == 0
     
     def train(self, env: gym.Env, experiment_name: str = None) -> DeepRLAgent:
         
@@ -146,23 +173,52 @@ class DQNTrainer(DeepTrainer):
                     self.episode_durations.append(t + 1)
                     # self.plot_durations()
                     break
+            
+            # only save results at checkpoint if a number of checkpoints is specified
+            if self.n_checkpoints is not None and self.is_checkpoint_episode(episode_idx):
+                checkpoint_name = f"{self.experiment_name}_{episode_idx+1}-{self.n_episodes}"
+                # save data to JSON
+                self.save_results_to_json(
+                    experiment_name = checkpoint_name,
+                    n_episodes = episode_idx + 1,
+                    episode_durations = self.episode_durations,
+                )
+                # create plots
+                self.plot_durations(episode_idx = episode_idx + 1)
+                # save agent
+                self.agent.save_agent(
+                    save_path = os.path.join(self.save_dir, self.experiment_name, "checkpoints/"),
+                    experiment_name = checkpoint_name,
+                )
+
+        if self.save_results:
+            # save data to JSON
+            self.save_results_to_json(
+                n_episodes = self.n_episodes,
+                episode_durations = self.episode_durations,
+            )
+            # create plots
+            self.plot_durations()
+            # save agent
+            self.agent.save_agent(os.path.join(self.save_dir, self.experiment_name))
         
         return self.agent
     
-    def plot_durations(self, show_result=False):
+    def plot_durations(self, episode_idx: int = None):
         """
         Plot the duration of each episode along the training.
         """
 
-        plt.figure(1)
+        is_training = episode_idx is not None
+
         durations_t = torch.tensor(self.episode_durations, dtype=torch.float)
-        if show_result:
-            plt.title('Result')
-        else:
+        if is_training:
             plt.clf()
-            plt.title('Training...')
-        plt.xlabel('Episode')
-        plt.ylabel('Duration')
+            plt.title(f"Training [{episode_idx}/{self.n_episodes}]")
+        else:
+            plt.title(f"Result of {self.experiment_name} training")
+        plt.xlabel("Episode")
+        plt.ylabel("Duration")
         plt.plot(durations_t.numpy())
         # Take 100 episode averages and plot them too
         if len(durations_t) >= 100:
@@ -170,18 +226,15 @@ class DQNTrainer(DeepTrainer):
             means = torch.cat((torch.zeros(99), means))
             plt.plot(means.numpy())
         
-        if show_result:
-            Path(self.save_dir).mkdir(parents=True, exist_ok=True)
-            filename = os.path.join(self.save_dir, f"{self.experiment_name}.png")
-            plt.savefig(filename)
+        save_path = os.path.join(self.save_dir, self.experiment_name)
+        filename = f"{self.experiment_name}.png"
+        if is_training:
+            save_path = os.path.join(save_path, "checkpoints/")
+            filename = f"{self.experiment_name}_{episode_idx}-{self.n_episodes}.png"
 
-        # plt.pause(0.001)  # pause a bit so that plots are updated
-        # if is_ipython:
-        #     if not show_result:
-        #         display.display(plt.gcf())
-        #         display.clear_output(wait=True)
-        #     else:
-        #         display.display(plt.gcf())
+        Path(save_path).mkdir(parents=True, exist_ok=True)
+        plt.savefig(os.path.join(save_path, filename))
+        plt.close()
 
 
 def main():

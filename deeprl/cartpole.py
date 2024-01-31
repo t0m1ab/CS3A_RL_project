@@ -25,16 +25,17 @@ def main():
         eps_decay = 100,
         tau = 5e-3,
         learning_rate = 1e-4,
-        n_episodes = 500,
+        n_episodes = 1000,
         memory_capacity = 10000,
         device = None,
         save_dir = None,
-        track_results = True,
+        save_results = True,
+        n_checkpoints = 10,
     )
 
     # name of the experiment (used to create a subfolder to save the plots related to this agent/training)
     # if EXPERIMENT_NAME is set to None, a default name will be used based on the name of the trainer (e.g. DQNTrainer => DQN)
-    EXPERIMENT_NAME = None
+    EXPERIMENT_NAME = "DQN-cartpole-example"
 
     agent = trainer.train(
         env=env,
@@ -42,7 +43,7 @@ def main():
     )
 
     # save plots
-    trainer.plot_durations(show_result=True)
+    trainer.plot_durations()
 
 
 if __name__ == "__main__":

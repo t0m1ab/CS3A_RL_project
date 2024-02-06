@@ -1,0 +1,43 @@
+[project]
+name = "cs3arl"
+version = "0.1.0"
+description = "CS3A Sokoban RL project"
+keywords = ["game", "ai", "sokoban", "reinforcement learning", "rl", "deep learning", "neural networks"]
+# readme = "cs3arl/README.md" # does not work...
+# license = {text = "MIT License"}
+requires-python = ">=3.10"
+
+authors = [
+    {name = "Tom Labiausse", email = "tom.labiausse@student-cs.fr"},
+    {name = "Nicolas Fabrigoule", email = "nicolas.fabrigoule@student-cs.fr"},
+]
+
+urls = {source = "https://github.com/t0m1ab/CS3A_RL_project"}
+
+# automatically install the following packages when installing the project (no need to pip install -r requirements.txt)
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "seaborn",
+    "tqdm",
+    "gymnasium",
+    "gradio",
+    "aenum",
+    "pillow",
+    "torch",
+]
+
+# optional dependencies are not installed by default but can be if specified like so: pip install .[dev]
+[project.optional-dependencies]
+dev = [
+    "toml",
+    "ipykernel",
+]
+
+# [project.scripts]
+# cs3arl = "cs3arl.__main__:main"
+# cs3arl_bonus = "cs3arl.__main__:bonus"
+
+[build-system]
+build-backend = "flit_core.buildapi"
+requires = ["flit_core >=3.2,<4"]

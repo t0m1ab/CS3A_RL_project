@@ -34,9 +34,8 @@ dev = [
     "ipykernel",
 ]
 
-# [project.scripts]
-# cs3arl = "cs3arl.__main__:main"
-# cs3arl_bonus = "cs3arl.__main__:bonus"
+[project.scripts]
+cs3arl = "cs3arl.__main__:main"
 
 [build-system]
 build-backend = "flit_core.buildapi"

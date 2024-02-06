@@ -6,32 +6,20 @@
 
 ## 0 - Setup
 
-* Clone the repository and rename it from `CS3A_RL_project/` to `cs3arl/` with the following commands:
+* Clone the repository:
 ```bash
 git clone git@github.com:t0m1ab/CS3A_RL_project.git
-mv CS3A_RL_project/ cs3arl/
 ```
 
-* Create a `pyproject.toml` at the same location as `cs3arl/` and copy paste the following lines:
-```toml
-[project]
-name = "cs3arl"
-version = "0.1.0"
-description = "CS3A Sokoban RL project"
-
-[build-system]
-build-backend = "flit_core.buildapi"
-requires = ["flit_core >=3.2,<4"]
-```
-
-* Run the following command to declare all code in `cs3arl/` as a package in edit mode: 
+* Install `cs3arl` as a package in edit mode (see config in `pyproject.toml`): 
 ```bash
+mv CS3A_RL_project/
 pip install -e .
 ``` 
 
-* Run the following command to install all dependencies: 
+* Test the installation using the newly declared command `cs3arl`: 
 ```bash
-pip install -r cs3arl/requirements.txt
+cs3arl --test
 ``` 
 
 ## 1 - Learn to play Black Jack using classic RL methods

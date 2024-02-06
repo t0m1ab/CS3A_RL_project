@@ -2,7 +2,6 @@ import os
 import numpy as np
 
 import cs3arl
-MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
 
 def thorp_basic_strategy():
@@ -37,7 +36,7 @@ def main():
         thorp_strat["no_usable_ace"], 
         "Thorp basic strategy", 
         show=False, 
-        save_dir=os.path.join(MODULE_PATH, "blackjack/outputs/"), 
+        save_dir=os.path.join(cs3arl.blackjack.__path__[0], "outputs/"), 
         save=True
     )
 

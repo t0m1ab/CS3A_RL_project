@@ -4,7 +4,7 @@ def tests():
     """ Run tests for the cs3arl package """
 
     import cs3arl
-    MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
+    PACKAGE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
     from cs3arl.blackjack.agents import main as agents_main
     from cs3arl.blackjack.trainers import main as trainers_main
@@ -18,7 +18,9 @@ def tests():
     from cs3arl.deeprl.agents import main as agents_main
     from cs3arl.deeprl.trainers import main as trainers_main
 
-    print("(1/3) Testing blackjack code...")
+    print(f"Running tests for package located at: {PACKAGE_PATH}")
+
+    print("\n(1/3) Testing blackjack code...")
     agents_main()
     trainers_main()
 

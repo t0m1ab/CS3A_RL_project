@@ -2,7 +2,6 @@ import os
 import numpy as np
 
 import cs3arl
-MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
 
 def create_datafilename(id: int, n_digits: int = 3):
@@ -103,7 +102,7 @@ class DeepMindBoxobanLoader(SokobanDataLoader):
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/", "boxoban-levels/")
+    DEFAULT_DATAPATH = os.path.join(cs3arl.sokoban.__path__[0], "boxoban-levels/")
 
     DEFAULT_LEVELS = ["medium", "hard", "unfiltered"]
     
@@ -141,7 +140,7 @@ class MySokobanLoader(SokobanDataLoader):
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/", "my-sokoban-levels/")
+    DEFAULT_DATAPATH = os.path.join(cs3arl.sokoban.__path__[0], "my-sokoban-levels/")
 
     DEFAULT_LEVELS = ["easy", "medium", "hard"]
     

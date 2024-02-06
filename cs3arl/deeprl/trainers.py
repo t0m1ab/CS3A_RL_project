@@ -8,8 +8,6 @@ from tqdm import tqdm
 import json
 
 import cs3arl
-MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
-
 from cs3arl.deeprl.agents import DeepRLAgent, DQNAgent
 # from cs3arl.sokoban.sokoban_env import SokobanEnv
 
@@ -19,7 +17,7 @@ class DeepTrainer():
 
     DEVICES = ["cpu", "cuda", "mps"]
 
-    DEFAULT_PATH = os.path.join(MODULE_PATH, "deeprl/")
+    DEFAULT_PATH = cs3arl.deeprl.__path__[0]
 
     def __init__(self, device: str, save_dir: str, save_results: bool) -> None:
         

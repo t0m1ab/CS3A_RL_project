@@ -4,7 +4,6 @@ import numpy as np
 from PIL import Image
 
 import cs3arl
-MODULE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
 
 def create_alpha_image(filepath: str) -> None:
@@ -27,7 +26,7 @@ class SokobanRenderingEngine():
 
     PLAYER_ID = 5
 
-    DEFAULT_DATAPATH = os.path.join(MODULE_PATH, "sokoban/surface/")
+    DEFAULT_DATAPATH = os.path.join(cs3arl.sokoban.__path__[0], "surface/")
     
     SYMBOLS_MATCHING = {
         0: "wall.png",
@@ -119,7 +118,7 @@ def main():
     rendering_engine.save_scene(
         sokoban_map, 
         player_position, 
-        filepath=os.path.join(MODULE_PATH, "sokoban/outputs/test_scene.png"),
+        filepath=os.path.join(cs3arl.sokoban.__path__[0], "outputs/", "test_scene.png"),
     )
 
 

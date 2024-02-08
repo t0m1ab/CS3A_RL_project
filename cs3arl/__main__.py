@@ -1,4 +1,16 @@
 import sys
+import os
+import cs3arl
+
+
+def print_help(help_msg_relative_path: str = "docs/help.txt"):
+    """ Print the help message for the cs3arl package """
+    filepath = os.path.join(cs3arl.__path__[0], help_msg_relative_path)
+    if not os.path.isfile(filepath):
+        raise FileNotFoundError(f"File not found: {filepath}")
+    with open(filepath, "r") as file:
+        print(file.read())
+
 
 def tests():
     """ Run tests for the cs3arl package """
@@ -41,21 +53,18 @@ def tests():
 def main():
     """ 
     Entry point for the application script.
-        - sys.argv: list of arguments given to the program (as strings separated by spaces)
+    (sys.argv = list of arguments given to the program as strings separated by spaces)
     """
 
     if ("--help" in sys.argv) or ("-h" in sys.argv):
-        print("Welcome to the cs3arl package!")
-        print("\nThe submodules available are: \n")
-        print("\t- blackjack: implements classic RL methods for the game of blackjack")
-        print("\t- sokoban: implements a sokoban environment respecting the API specifications of gym")
-        print("\t- deeprl: implements deep reinforcement learning methods like DQN")
+        print_help()
 
     elif ("--test" in sys.argv) or ("-t" in sys.argv):
         tests()
 
     else:
         print("command 'cs3arl' is working: try --help or --test")
+
 
 if __name__ == "__main__":
     main()

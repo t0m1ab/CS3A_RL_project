@@ -29,7 +29,7 @@ def thorp_basic_strategy():
 
 def main():
     # Create a plot showing Thorp basic strategy
-    from cs3arl.blackjack.visualization import create_policy_plots
+    from cs3arl.classicrl.visualization import create_policy_plots
     thorp_strat = thorp_basic_strategy()
     create_policy_plots(
         thorp_strat["usable_ace"], 

@@ -6,8 +6,8 @@ def tests():
     import cs3arl
     PACKAGE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
-    from cs3arl.blackjack.agents import main as agents_main
-    from cs3arl.blackjack.trainers import main as trainers_main
+    from cs3arl.classicrl.agents import main as agents_main
+    from cs3arl.classicrl.trainers import main as trainers_main
 
     from cs3arl.sokoban.sokoban_env import main as sokoban_env_main
     from cs3arl.sokoban.dataloaders import main as dataloaders_main

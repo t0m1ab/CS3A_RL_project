@@ -2,8 +2,8 @@ from tqdm import tqdm
 import numpy as np
 import gymnasium as gym
 
-from cs3arl.blackjack.agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
-from cs3arl.blackjack.visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
+from cs3arl.classicrl.agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
+from cs3arl.classicrl.visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
 class Trainer():

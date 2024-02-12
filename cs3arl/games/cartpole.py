@@ -35,7 +35,7 @@ def main():
 
     # name of the experiment (used to create a subfolder to save the plots related to this agent/training)
     # if EXPERIMENT_NAME is set to None, a default name will be used based on the name of the trainer (e.g. DQNTrainer => DQN)
-    EXPERIMENT_NAME = "DQN-cartpole-example"
+    EXPERIMENT_NAME = "DQN-cartpole"
 
     agent = trainer.train(
         env=env,

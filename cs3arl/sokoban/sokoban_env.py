@@ -89,7 +89,7 @@ class SokobanEnv(Env):
             - num_boxes: number of boxes to put in the generated map
             - gen_steps: maximum number of steps for map generation
             - max_steps: maximum number of steps for an episode
-            - reset_mode: mode for the reset method, either "random" or "next"
+            - reset_mode: mode for the reset method, see options in SokobanEnv.RESET_MODES
             - merge_move_push: if True, reduce the action space to 4 actions keeping only push actions and allowing player to move with it
         """
 
@@ -125,7 +125,6 @@ class SokobanEnv(Env):
         self.merge_move_push = merge_move_push # if True, move actions allow agent to push boxes just like push actions
         # mode for the reset method, either "random" or "next"
         self.reset_mode = reset_mode if reset_mode in SokobanEnv.RESET_MODES else SokobanEnv.RESET_MODES[0]
-        # push and move actions are merged so that only push remains
         self.action_lookup = {i: SokobanEnv.ACTION_LOOKUP[i] for i in range(4 if self.merge_move_push else 8)}
         
         ## action_space: int for each action
@@ -191,7 +190,7 @@ class SokobanEnv(Env):
         self.num_env_steps = 0
         self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
     
-    def reset(self, seed: int = None, options: dict = None) -> tuple[tuple[np.ndarray, tuple[int,int]], dict]:
+    def reset(self, seed: int = None, options: dict = None) -> tuple[tuple | np.ndarray, dict]:
         """
         Reset the environment using another map is a map_collection is given.
         Otherwise just perform a reset_episode().
@@ -208,7 +207,7 @@ class SokobanEnv(Env):
             self.init_map = self.map_collection[self.map_id].copy().astype(np.uint8)
         
         self.reset_episode()
-
+        
         return (self.map, self.player_position), {}
 
     def __is_done(self) -> bool:
@@ -304,8 +303,8 @@ class SokobanEnv(Env):
         else:
             return SokobanEnv.ActionResult.NULL
 
-    def step(self, action: int):
-
+    def step(self, action: int) -> tuple[tuple | np.ndarray, float, bool, bool, dict]:
+        
         if not action in self.action_lookup:
             raise ValueError(f"Invalid action ID: {action}")
         
@@ -331,8 +330,26 @@ class SokobanEnv(Env):
         if terminated or truncated:
             info["steps_used"] = self.num_env_steps
             info["all_boxes_on_target"] = (self.boxes_on_target == self.num_boxes)
-
+        
         return (self.map, self.player_position), self.last_reward, terminated, truncated, info
+    
+    @staticmethod
+    def to_bloc_state(map: np.ndarray, player_position: tuple) -> np.ndarray:
+        """ 
+            Build a tensor (3D np.ndarray) observation from the map and the player position. 
+            The shape of the tensor is (4, map_dim[0], map_dim[1]) with WTBP channels:
+            - channel 1 = channel W : 1 if the cell is a wall, 0 otherwise
+            - channel 2 = channel T : 1 if the cell is a target, 0 otherwise
+            - channel 3 = channel B : 1 if the cell is a box, 0 otherwise
+            - channel 4 = channel P : 1 if the cell is the player, 0 otherwise
+            The elements of map must match the keys of SokobanEnv.CELL_LOOKUP.
+        """
+        tensor = np.zeros((4, map.shape[0], map.shape[1]), dtype=np.int8)
+        tensor[0] = (map == 0).astype(np.int8) # W channel
+        tensor[1] = (map == 2).astype(np.int8) # T channel
+        tensor[2] = ((map == 3) | (map == 4)).astype(np.int8) # B channel
+        tensor[3, player_position[0], player_position[1]] = 1 # P channel
+        return tensor
 
     def get_image(self, mode: str = None):
         """ Only mode "human" is supported for now and is the default rendering given by the engine. """
@@ -387,6 +404,8 @@ def main():
     )
 
     print("Sokoban environment is ready!")
+
+    print(env.action_space.n)
 
     # gym.pprint_registry()
 

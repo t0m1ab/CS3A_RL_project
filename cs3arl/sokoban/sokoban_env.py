@@ -209,7 +209,7 @@ class SokobanEnv(Env):
         
         self.reset_episode()
 
-        return (self.map, self.player_position), {}
+        return (np.copy(self.map), self.player_position), {}
 
     def __is_done(self) -> bool:
         """ Returns True if all boxes are on target or if the max_steps is reached. """
@@ -332,7 +332,7 @@ class SokobanEnv(Env):
             info["steps_used"] = self.num_env_steps
             info["all_boxes_on_target"] = (self.boxes_on_target == self.num_boxes)
 
-        return (self.map, self.player_position), self.last_reward, terminated, truncated, info
+        return (np.copy(self.map), self.player_position), self.last_reward, terminated, truncated, info
 
     def get_image(self, mode: str = None):
         """ Only mode "human" is supported for now and is the default rendering given by the engine. """

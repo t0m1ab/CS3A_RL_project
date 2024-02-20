@@ -1,0 +1,8 @@
+.DS_store
+.venv/*
+**/__pycache__/
+**/outputs/
+**/notes.txt
+
+cs3arl/sokoban/boxoban-levels/hard
+cs3arl/sokoban/boxoban-levels/unfiltered

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import numpy as np
 import matplotlib.pyplot as plt
 from itertools import count
 import gymnasium as gym
@@ -8,8 +9,8 @@ from tqdm import tqdm
 import json
 
 import cs3arl
-from cs3arl.deeprl.agents import DeepRLAgent, DQNAgent
-# from cs3arl.sokoban.sokoban_env import SokobanEnv
+from cs3arl.deeprl.agents import DeepRLAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban
+from cs3arl.sokoban.sokoban_env import SokobanEnv
 
 
 class DeepTrainer():
@@ -67,6 +68,11 @@ class DeepTrainer():
 
 
 class DQNTrainer(DeepTrainer):
+
+    KEYWORD_TO_AGENT = {
+        "cartpole": DQNAgentCartPole,
+        "sokoban": DQNAgentSokoban,
+    }
     
     def __init__(
             self,
@@ -105,15 +111,36 @@ class DQNTrainer(DeepTrainer):
         idx = episode_idx + 1
         return idx % (self.n_episodes // self.n_checkpoints) == 0
     
+    def __is_sokoban_env(self):
+        if self.env_name is None:
+            raise ValueError("No environment was set.")
+        return "sokoban" in self.env_name.lower()
+    
+    def __get_agent_constructor(self, env_name: str = None):
+        """ Get the constructor of the DQN agent based on the environment name. """
+        env_name = env_name if env_name is not None else self.env_name
+        for keyword, agent_constructor in self.KEYWORD_TO_AGENT.items():
+            if keyword in env_name.lower():
+                return agent_constructor
+        raise ValueError(f"No agent found in {DQNTrainer.KEYWORD_TO_AGENT} for environment '{env_name}'.")
+    
     def train(self, env: gym.Env, experiment_name: str = None) -> DeepRLAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
         self.env_name = self.env.unwrapped.spec.id
 
-        obs_space_size = len(self.env.reset()[0]) ### MYTODO: adapt to the environment
-        action_space_size = self.env.action_space.n ### MYTODO: adapt to the environment
+        # get the size of the observation space
+        if self.__is_sokoban_env():
+            (map, _), _ = self.env.reset()
+            if map.shape[0] != map.shape[1]:
+                raise ValueError(f"Observation returned by the environnement is not a square map: shape={obs[0].shape}")
+            obs_space_size = map.shape[0] * map.shape[1] # number of cells in the map
+        else:
+            obs_space_size = len(self.env.reset()[0])
+        # get the size of the action space
+        action_space_size = self.env.action_space.n
 
-        self.agent = DQNAgent(
+        self.agent = self.__get_agent_constructor()(
             obs_space_size = obs_space_size,
             action_space_size = action_space_size,
             eps_start = self.eps_start,
@@ -133,7 +160,10 @@ class DQNTrainer(DeepTrainer):
         for episode_idx in tqdm(range(self.n_episodes), desc=loop_log):
 
             # Initialize the environment and get its state
-            state, info = self.env.reset()
+            state, _ = self.env.reset()
+
+            if self.__is_sokoban_env(): # convert to bloc state to feed a DQN
+                state = SokobanEnv.to_bloc_state(map=state[0], player_position=state[1])
 
             ### MYTODO: convert state to tensor representation (list of values)
             state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
@@ -145,11 +175,14 @@ class DQNTrainer(DeepTrainer):
 
                 observation, reward, terminated, truncated, _ = self.env.step(action.item())
 
+                if self.__is_sokoban_env(): # convert to bloc state to feed a DQN
+                    observation = SokobanEnv.to_bloc_state(map=observation[0], player_position=observation[1])
+
                 reward_tensor = torch.tensor([reward], device=self.device)
 
                 done = terminated or truncated
 
-                if terminated:
+                if terminated: # no next state if the episode is terminated
                     next_state_tensor = None
                 else:
                     next_state_tensor = torch.tensor(observation, dtype=torch.float32, device=self.device).unsqueeze(0)

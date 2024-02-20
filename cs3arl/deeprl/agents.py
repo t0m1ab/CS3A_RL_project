@@ -9,7 +9,7 @@ import torch.optim as optim
 # import torch.nn.functional as F
 
 from cs3arl.deeprl.buffers import Transition, ReplayMemory
-from cs3arl.deeprl.networks import DQN
+from cs3arl.deeprl.networks import DQNCartPole, DQNSokoban
 
 
 class DeepRLAgent:
@@ -82,10 +82,9 @@ class DQNAgent(DeepRLAgent):
         self.memory_capacity = memory_capacity
         self.memory = ReplayMemory(self.memory_capacity)
 
-        self.policy_net = DQN(self.n_observations, self.n_actions).to(device)
-        self.target_net = DQN(self.n_observations, self.n_actions).to(device)
-        self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
-        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
+        self.policy_net = None
+        self.target_net = None
+        self.optimizer = None
         self.criterion = nn.SmoothL1Loss()
     
     def get_action(self, env: gym.Env, state: torch.Tensor) -> torch.Tensor:
@@ -166,6 +165,30 @@ class DQNAgent(DeepRLAgent):
         fname = experiment_name if experiment_name is not None else self.__name__
         Path(save_path).mkdir(parents=True, exist_ok=True)
         torch.save(self.policy_net.state_dict(), os.path.join(save_path, f"{fname}.pt"))
+
+
+class DQNAgentCartPole(DQNAgent):
+
+    def __init__(self, **kwargs) -> None:
+
+        super().__init__(**kwargs)
+        self.__name__ = "DQNAgentSokoban"
+        self.policy_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
+        self.target_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
+        self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
+
+
+class DQNAgentSokoban(DQNAgent):
+
+    def __init__(self, **kwargs) -> None:
+
+        super().__init__(**kwargs)
+        self.__name__ = "DQNAgentSokoban"
+        self.policy_net = DQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.target_net = DQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
 
 
 def main():

@@ -403,7 +403,7 @@ def main():
         reset_mode="random"
     )
 
-    print("Sokoban environment is ready!")
+    print("SokobanEnv is ready!")
 
     # gym.pprint_registry()
 

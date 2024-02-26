@@ -158,7 +158,7 @@ def main():
         discount_factor=0.95,
     )
 
-    print("Qlearning agent is ready!")
+    print("QlearningAgent is ready!")
 
     # MCESAgent
     MCES_agent = MCESAgent(
@@ -166,7 +166,7 @@ def main():
         discount_factor=1.0,
     )
 
-    print("MCES agent is ready!")
+    print("MCESAgent is ready!")
 
     # SARSAAgent
     MCES_agent = SARSAAgent(
@@ -178,7 +178,7 @@ def main():
         discount_factor=0.95,
     )
 
-    print("SARSA` agent is ready!")
+    print("SARSAAgent is ready!")
 
 
 if __name__ == "__main__":

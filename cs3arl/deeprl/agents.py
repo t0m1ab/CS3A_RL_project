@@ -9,10 +9,10 @@ import torch.optim as optim
 # import torch.nn.functional as F
 
 from cs3arl.deeprl.buffers import Transition, ReplayMemory
-from cs3arl.deeprl.networks import DQNCartPole, DQNSokoban
+from cs3arl.deeprl.networks import DQNCartPole, ConvDQNSokoban, FCDQNSokoban
 
 
-class DeepRLAgent:
+class DeepAgent:
 
     def __init__(
         self,
@@ -31,7 +31,7 @@ class DeepRLAgent:
             - MYTODO...
         """
         
-        self.__name__ = "DeepRLAgent"
+        self.__name__ = "DeepAgent"
         self.eps_start = eps_start
         self.eps_end = eps_end
         self.eps_decay = eps_decay
@@ -47,7 +47,7 @@ class DeepRLAgent:
         self.epsilon = self.eps_end + (self.eps_start - self.eps_end) * eps_factor
 
 
-class DQNAgent(DeepRLAgent):
+class DQNAgent(DeepAgent):
 
     def __init__(
             self, 
@@ -185,8 +185,8 @@ class DQNAgentSokoban(DQNAgent):
 
         super().__init__(**kwargs)
         self.__name__ = "DQNAgentSokoban"
-        self.policy_net = DQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        self.target_net = DQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.policy_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.target_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
 

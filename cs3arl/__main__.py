@@ -18,8 +18,8 @@ def tests():
     import cs3arl
     PACKAGE_PATH = cs3arl.__path__[0] # absolute path to cs3arl module
 
-    from cs3arl.classicrl.agents import main as agents_main
-    from cs3arl.classicrl.trainers import main as trainers_main
+    from cs3arl.classicrl.agents import main as classic_agents_main
+    from cs3arl.classicrl.trainers import main as classic_trainers_main
 
     from cs3arl.sokoban.sokoban_env import main as sokoban_env_main
     from cs3arl.sokoban.dataloaders import main as dataloaders_main
@@ -27,25 +27,25 @@ def tests():
 
     from cs3arl.deeprl.buffers import main as buffers_main
     from cs3arl.deeprl.networks import main as networks_main
-    from cs3arl.deeprl.agents import main as agents_main
-    from cs3arl.deeprl.trainers import main as trainers_main
+    from cs3arl.deeprl.agents import main as deep_agents_main
+    from cs3arl.deeprl.trainers import main as deep_trainers_main
 
     print(f"Running tests for package located at: {PACKAGE_PATH}")
 
-    print("\n(1/3) Testing blackjack code...")
-    agents_main()
-    trainers_main()
+    print("\n(1/3) Testing classis agents/trainers code...")
+    classic_agents_main()
+    classic_trainers_main()
 
     print("\n(2/3) Testing sokoban code...")
     sokoban_env_main()
     dataloaders_main()
     render_utils_main()
 
-    print("\n(3/3) Testing deeprl code...")
+    print("\n(3/3) Testing deep agents/trainers code...")
     buffers_main()
     networks_main()
-    agents_main()
-    trainers_main()
+    deep_agents_main()
+    deep_trainers_main()
 
     print("\n>>> ALL TESTS PASSED! <<<")
 

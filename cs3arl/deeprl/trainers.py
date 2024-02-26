@@ -9,7 +9,7 @@ from tqdm import tqdm
 import json
 
 import cs3arl
-from cs3arl.deeprl.agents import DeepRLAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban
+from cs3arl.deeprl.agents import DeepAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban
 from cs3arl.sokoban.sokoban_env import SokobanEnv
 
 
@@ -124,7 +124,7 @@ class DQNTrainer(DeepTrainer):
                 return agent_constructor
         raise ValueError(f"No agent found in {DQNTrainer.KEYWORD_TO_AGENT} for environment '{env_name}'.")
     
-    def train(self, env: gym.Env, experiment_name: str = None) -> DeepRLAgent:
+    def train(self, env: gym.Env, experiment_name: str = None) -> DeepAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
         self.env_name = self.env.unwrapped.spec.id

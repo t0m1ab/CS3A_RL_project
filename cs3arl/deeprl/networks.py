@@ -35,7 +35,7 @@ class DQNCartPole(DQN):
         return self.layer3(x)
 
 
-class DQNSokoban(DQN):
+class ConvDQNSokoban(DQN):
 
     def __init__(self, n_observations: int, n_actions: int):
         """ 
@@ -43,8 +43,8 @@ class DQNSokoban(DQN):
             - n_observations: should be equal to the number of cells in the map which is considered squared (e.g. 10x10 => 100)
             - n_actions: should be equal to the number of possible actions (4 or 8 for Sokoban)
         """
-        super(DQNSokoban, self).__init__()
-        self.__name__ = "DQNSokoban"
+        super().__init__()
+        self.__name__ = "ConvDQNSokoban"
 
         map_edge_size = int(n_observations ** 0.5)
         if map_edge_size < 4:
@@ -76,20 +76,63 @@ class DQNSokoban(DQN):
         return x
 
 
+class FCDQNSokoban(DQN):
+
+    def __init__(self, n_observations: int, n_actions: int):
+        """ 
+        ARGUMENTS:
+            - n_observations: should be equal to the number of cells in the map which is considered squared (e.g. 10x10 => 100)
+            - n_actions: should be equal to the number of possible actions (4 or 8 for Sokoban)
+        """
+        super().__init__()
+        self.__name__ = "FCDQNSokoban"
+
+        map_edge_size = int(n_observations ** 0.5)
+        if map_edge_size < 4:
+            raise ValueError("The map should be at least 4x4")
+
+        self.dim1 = n_observations
+        self.dim2 = n_observations // 2
+
+        self.flatten = nn.Flatten()
+        self.fc_in = nn.Linear(4 * n_observations, self.dim1)
+        self.fc1 = nn.Linear(self.dim1, self.dim2)
+        self.fc_out = nn.Linear(self.dim2, n_actions)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        print_shapes = False
+        x = self.flatten(x)
+        print(x.shape) if print_shapes else None
+        x = F.relu(self.fc_in(x))
+        print(x.shape) if print_shapes else None
+        x = F.relu(self.fc1(x))
+        print(x.shape) if print_shapes else None
+        x = self.fc_out(x)
+        print(x.shape) if print_shapes else None
+        return x
+
+
 def main():
 
     # test DQNCartPole
     net1 = DQNCartPole(100, 10)
     print(f"{net1.__name__} is ready!")
 
-    # test DQNSokoban
     map_edge_size = 8
-    net2 = DQNSokoban(map_edge_size ** 2, 8)
     input = torch.randn(32, 4, map_edge_size, map_edge_size) # 32 = batch size, 4 = number of channels
-    _ = net2(input) # don't forget to unsqueeze(0) if the batch contains a single element
-    # net2.enumerate_parameters()
-    # print(f"Number of parameters: {DQNSokoban.count_parameters(net2)}")
-    print(f"{net2.__name__} is ready!")
+
+    # test ConvDQNSokoban
+    conv_net = ConvDQNSokoban(map_edge_size ** 2, 8)
+    _ = conv_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
+    print(f"{conv_net.__name__} is ready!")
+    # conv_net.enumerate_parameters()
+    # print(f"Number of parameters = {conv_net.count_parameters()}")
+
+    fc_net = FCDQNSokoban(map_edge_size ** 2, 8)
+    _ = fc_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
+    print(f"{fc_net.__name__} is ready!")
+    # fc_net.enumerate_parameters()
+    # print(f"Number of parameters = {fc_net.count_parameters()}")
 
 if __name__ == "__main__":
     main()

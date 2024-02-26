@@ -178,8 +178,8 @@ def main():
     ## DEEP MIND DATA loader
 
     medium_DeepMinds_levels = DeepMindBoxobanLoader(level="medium", split="train", file_id=0)
-    print(f"Number of DEEPMIND levels: {medium_DeepMinds_levels.n_levels}")
-    rand_level_id = np.random.randint(medium_DeepMinds_levels.n_levels-1)
+    # print(f"Number of DEEPMIND levels: {medium_DeepMinds_levels.n_levels}")
+    rand_level_id = np.random.randint(medium_DeepMinds_levels.n_levels)
     player_position, rand_level = medium_DeepMinds_levels[rand_level_id]
     # print(f"Level ID: {rand_level_id}")
     # print(f"Player position: {player_position}")
@@ -191,8 +191,8 @@ def main():
     ## MY CUSTOM DATA loader
 
     easy_custom_levels = MySokobanLoader(level="easy", file_id=0)
-    print(f"Number of CUSTOM levels: {easy_custom_levels.n_levels}")
-    rand_level_id = np.random.randint(easy_custom_levels.n_levels-1)
+    # print(f"Number of CUSTOM levels: {easy_custom_levels.n_levels}")
+    rand_level_id = np.random.randint(easy_custom_levels.n_levels)
     player_position, rand_level = easy_custom_levels[rand_level_id]
     # print(f"Level ID: {rand_level_id}")
     # print(f"Player position: {player_position}")

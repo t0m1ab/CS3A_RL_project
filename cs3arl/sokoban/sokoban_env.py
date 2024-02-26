@@ -410,9 +410,7 @@ def main():
         reset_mode="random"
     )
 
-    print("Sokoban environment is ready!")
-
-    print(env.action_space.n)
+    print("SokobanEnv is ready!")
 
     # gym.pprint_registry()
 

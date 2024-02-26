@@ -213,7 +213,7 @@ def main():
         discount_factor=0.95,
     )
 
-    print("Qlearning Trainer is ready!")
+    print("QlearningTrainer is ready!")
 
     # MCESTrainer
     trainer = MCESTrainer(
@@ -221,7 +221,7 @@ def main():
         discount_factor=1.0,
     )
 
-    print("MCES Trainer is ready!")
+    print("MCESTrainer is ready!")
 
     # SARSATrainer
     trainer = SARSATrainer(
@@ -232,7 +232,7 @@ def main():
         discount_factor=0.95,
     )
 
-    print("SARSA Trainer is ready!")
+    print("SARSATrainer is ready!")
 
 
 if __name__ == "__main__":

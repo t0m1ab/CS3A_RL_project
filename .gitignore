@@ -3,6 +3,7 @@
 **/__pycache__/
 **/outputs/
 **/notes.txt
+**/Sokoban.ipynb
 
 cs3arl/sokoban/boxoban-levels/hard
 cs3arl/sokoban/boxoban-levels/unfiltered

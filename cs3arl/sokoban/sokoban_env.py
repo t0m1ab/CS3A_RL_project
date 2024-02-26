@@ -333,6 +333,13 @@ class SokobanEnv(Env):
 
         return (np.copy(self.map), self.player_position), self.last_reward, terminated, truncated, info
     
+    def serializer(self, a):
+        arr1, arr2= a
+        tuple1 = tuple(tuple(row) for row in arr1)
+        tuple2 = arr2
+        tuple_a = (tuple1, tuple2)
+        return(tuple_a)
+
     @staticmethod
     def to_bloc_state(map: np.ndarray, player_position: tuple) -> np.ndarray:
         """ 

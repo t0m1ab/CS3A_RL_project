@@ -2,11 +2,13 @@ from tqdm import tqdm
 import numpy as np
 import gymnasium as gym
 
-from cs3arl.classicrl.agents import BlackjackAgent, QlearningAgent, MCESAgent, SARSAAgent
+from cs3arl.classicrl.agents import ClassicAgent, QlearningAgent, MCESAgent, SARSAAgent
 from cs3arl.classicrl.visualization import create_training_plots, create_grids, create_value_policy_plots, create_policy_plots
 
 
 class Trainer():
+
+    ENV_WITH_SERIALIZERS = ["sokoban/sokoban-v0"]
 
     def __init__(self) -> None:
         self.env = None
@@ -57,7 +59,7 @@ class QlearningTrainer(Trainer):
         self.final_epsilon = final_epsilon
         self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
     
-    def train(self, env: gym.Env, experiment_name: str = None) -> BlackjackAgent:
+    def train(self, env: gym.Env, experiment_name: str = None) -> ClassicAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
 
@@ -68,14 +70,15 @@ class QlearningTrainer(Trainer):
             final_epsilon=self.final_epsilon,
             epsilon_decay=self.epsilon_decay,
             discount_factor=self.discount_factor,
+            serializer=self.env.serializer if self.env.spec.id in QlearningTrainer.ENV_WITH_SERIALIZERS else None
         )
 
         self.experiment_name = experiment_name if experiment_name is not None else "QLEARNING"
 
         for episode in tqdm(range(self.n_episodes)):
+            num_steps=0
             obs, info = self.env.reset()
             done = False
-
             # play one episode
             while not done:
                 action = self.agent.get_action(self.env, obs)
@@ -88,8 +91,10 @@ class QlearningTrainer(Trainer):
                 done = terminated or truncated
                 obs = next_obs
 
+                num_steps+=1
             self.agent.decay_epsilon()
-                
+            self.agent.reward_per_episode_list.append(np.mean(self.agent.reward_list[-num_steps:]))
+            self.agent.num_steps_list.append(num_steps)
         return self.agent
 
 
@@ -100,7 +105,7 @@ class MCESTrainer(Trainer):
         self.n_episodes = n_episodes
         self.discount_factor = discount_factor
     
-    def train(self, env: gym.Env, experiment_name: str = None) -> BlackjackAgent:
+    def train(self, env: gym.Env, experiment_name: str = None) -> ClassicAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
 
@@ -155,7 +160,7 @@ class SARSATrainer(Trainer):
         self.final_epsilon = final_epsilon
         self.epsilon_decay = start_epsilon / (n_episodes / 2) # reduce the exploration over time
     
-    def train(self, env: gym.Env, experiment_name: str = None) -> BlackjackAgent:
+    def train(self, env: gym.Env, experiment_name: str = None) -> ClassicAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
 

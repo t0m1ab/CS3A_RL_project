@@ -2,7 +2,7 @@ from collections import defaultdict
 import numpy as np
 
 
-class BlackjackAgent:
+class ClassicAgent:
 
     def __init__(
         self,
@@ -33,43 +33,57 @@ class BlackjackAgent:
         self.epsilon_decay = epsilon_decay # reduce the exploration over time
 
         self.training_error = []
+        self.reward_list = []
+        self.reward_per_episode_list = []
+        self.num_steps_list = []
     
     def decay_epsilon(self) -> None:
         self.epsilon = max(self.final_epsilon, self.epsilon - self.epsilon_decay)
 
 
-class QlearningAgent(BlackjackAgent):
+class QlearningAgent(ClassicAgent):
 
-    def __init__(self, **kwargs):
+    def __init__(self, serializer=None, **kwargs):
         super().__init__(**kwargs)
+        self.serializer=serializer
 
-    def get_action(self, env, obs: tuple[int, int, bool]) -> int:
+    def get_action(self, env, obs) -> int:
         """
         Returns the best action with probability (1 - epsilon) otherwise a random action with probability epsilon to ensure exploration.
         """
         if np.random.random() < self.epsilon: # with probability epsilon return a random action to explore the environment
             return env.action_space.sample()
         else: # with probability (1 - epsilon) act greedily (exploit)
-            return int(np.argmax(self.q_values[obs]))
+            if self.serializer is None:
+                return int(np.argmax(self.q_values[obs]))
+            else :
+                return int(np.argmax(self.q_values[self.serializer(obs)]))
 
     def update(
         self,
-        obs: tuple[int, int, bool],
+        obs,
         action: int,
         reward: float,
         terminated: bool,
-        next_obs: tuple[int, int, bool],
+        next_obs,
     ) -> None:
         """
         Updates the Q-value of an action following the Q-learning method [see S&B section 6.5].
         """
-        future_q_value = (not terminated) * np.max(self.q_values[next_obs])
-        temporal_difference = reward + self.discount_factor * future_q_value - self.q_values[obs][action]
-        self.q_values[obs][action] = self.q_values[obs][action] + self.lr * temporal_difference
+        if self.serializer is not None:
+            obs_serializer = self.serializer(obs)
+            next_obs_serializer = self.serializer(next_obs)
+        else :
+            obs_serializer = obs
+            next_obs_serializer = next_obs       
+        future_q_value = (not terminated) * np.max(self.q_values[next_obs_serializer])
+        temporal_difference = reward + self.discount_factor * future_q_value - self.q_values[obs_serializer][action]
+        self.q_values[obs_serializer][action] = self.q_values[obs_serializer][action] + self.lr * temporal_difference
         self.training_error.append(temporal_difference)
+        self.reward_list.append(reward)
 
 
-class MCESAgent(BlackjackAgent):
+class MCESAgent(ClassicAgent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -110,7 +124,7 @@ class MCESAgent(BlackjackAgent):
                 self.q_values[state_t][action_t] = self.mean_return[state_action_pairs[t]][1]
 
 
-class SARSAAgent(BlackjackAgent):
+class SARSAAgent(ClassicAgent):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -140,7 +154,7 @@ class SARSAAgent(BlackjackAgent):
         next_q_value = (not terminated) * self.q_values[next_state][next_action]
         td_error = reward + self.discount_factor * next_q_value - q_value
         self.q_values[state][action] = q_value + self.lr * td_error
-    
+
 
 def main():
 

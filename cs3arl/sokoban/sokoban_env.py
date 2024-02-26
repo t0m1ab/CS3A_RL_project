@@ -405,8 +405,6 @@ def main():
 
     print("Sokoban environment is ready!")
 
-    print(env.action_space.n)
-
     # gym.pprint_registry()
 
 

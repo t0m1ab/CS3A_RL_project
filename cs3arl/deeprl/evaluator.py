@@ -7,7 +7,7 @@ from cs3arl.deeprl.trainers import DeepTrainer
 from cs3arl.deeprl.agents import DQNAgentSokoban
 from cs3arl.sokoban.dataloaders import MySokobanLoader
 from cs3arl.sokoban.sokoban_env import SokobanEnv
-from cs3arl.utils import save_gif
+from cs3arl.utils import EpisodeData, save_gif, save_frames_mosaic
 
 
 DEMO_PATH = "outputs/demo/"
@@ -76,7 +76,7 @@ def get_episode_frames(
         env: gym.Env,
         agent: DQNAgentSokoban,
         n_episodes: int=1,
-    ):
+    ) -> list[EpisodeData]:
     """ 
     Run episodes with the given agent in the given environement and return the frames for each episode.
     """
@@ -85,13 +85,16 @@ def get_episode_frames(
     agent.eval()
 
     # play an episode
-    all_frames = [[] for _ in range(n_episodes)]
+    data = []
 
     for episode_idx in range(n_episodes):
 
+
         done = False
-        state, _ = env.reset()
-        all_frames[episode_idx].append(env.unwrapped.get_image())
+        state, _ = env.reset(same=True if episode_idx == 0 else False) # same=True to start with the first map in the collection
+        
+        epsiode_data = EpisodeData(map_id=env.unwrapped.map_id)
+        epsiode_data.add_frame(env.unwrapped.get_image())
 
         while not done:
 
@@ -99,11 +102,11 @@ def get_episode_frames(
             state, _, terminated, truncated, _ = env.step(action.item())
             done = terminated or truncated
 
-            all_frames[episode_idx].append(env.unwrapped.get_image())
+            epsiode_data.add_frame(env.unwrapped.get_image())
         
-        # print("Episode length:", len(frames))
+        data.append(epsiode_data)
 
-    return all_frames
+    return data
 
 
 def demo():
@@ -112,18 +115,20 @@ def demo():
     env = load_sokoban_env(
         map_collection=MySokobanLoader(level="easy", file_id=0),
         merge_move_push=True,
-        reset_mode="fixed",
-        max_steps=100,
+        reset_mode="next",
+        max_steps=99, # => 100 frames max with the initial state
     )
 
     # load pretrained agent
     agent = load_sokoban_DQN_agent(model_name="DQN-sokoban")
 
-    # create frames
-    all_frames = get_episode_frames(env, agent, n_episodes=4)
+    # run episodes and store frames for each one
+    data = get_episode_frames(env, agent, n_episodes=4)
 
-    for episode_idx, episode_frames in enumerate(all_frames):
-        save_gif(episode_frames, gif_name="sokoban_demo" if len(all_frames) == 1 else f"sokoban_demo_{episode_idx}")
+    for episode_idx, episode_data in enumerate(data):
+        tag = "sokoban_demo" if len(data) == 1 else f"sokoban_demo_{episode_idx}"
+        save_gif(episode_data, tag=tag)
+        save_frames_mosaic(episode_data, tag=tag)
 
 
 def main():

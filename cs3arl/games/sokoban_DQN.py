@@ -35,7 +35,7 @@ def main():
         id=f"{namespace}/{env_id}",
         map_collection=map_collection,
         merge_move_push=True,
-        reset_mode="random", # only one map in the collection, so the reset mode does not matter (for the moment)
+        reset_mode="next", # only one map in the collection, so the reset mode does not matter (for the moment)
         max_steps=100,
     )
 

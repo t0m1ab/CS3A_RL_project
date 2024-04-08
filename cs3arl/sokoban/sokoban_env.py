@@ -191,7 +191,7 @@ class SokobanEnv(Env):
         self.num_env_steps = 0
         self.player_position = self.__get_player_position(extract_player=True) # virtually free the cell where the player is
     
-    def reset(self, seed: int = None, options: dict = None) -> tuple[tuple | np.ndarray, dict]:
+    def reset(self, seed: int = None, options: dict = None, same: bool=False) -> tuple[tuple | np.ndarray, dict]:
         """
         Reset the environment using another map is a map_collection is given.
         Otherwise just perform a reset_episode().
@@ -201,12 +201,14 @@ class SokobanEnv(Env):
             self.seed(seed)
         
         if self.map_collection is not None:
-            if self.reset_mode == "random":
+            if same:
+                self.map_id = self.map_id
+            elif self.reset_mode == "random":
                 self.map_id = np.random.randint(0, len(self.map_collection))
             elif self.reset_mode == "next":
                 self.map_id = (self.map_id + 1) % len(self.map_collection)
             elif self.reset_mode == "fixed":
-                self.map_id = 0
+                self.map_id = 0 
             self.init_map = self.map_collection[self.map_id].copy().astype(np.uint8)
         
         self.reset_episode()

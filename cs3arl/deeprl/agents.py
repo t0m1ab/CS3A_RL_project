@@ -6,48 +6,13 @@ import gymnasium as gym
 import torch
 import torch.nn as nn
 import torch.optim as optim
-# import torch.nn.functional as F
 
+from cs3arl.sokoban.sokoban_env import SokobanEnv
 from cs3arl.deeprl.buffers import Transition, ReplayMemory
-from cs3arl.deeprl.networks import DQNCartPole, ConvDQNSokoban, FCDQNSokoban
+from cs3arl.deeprl.networks import ConvDQNCartPole, ConvDQNSokoban, FCDQNSokoban, NetType
 
 
-class DeepAgent:
-
-    def __init__(
-        self,
-        obs_space_size: int,
-        action_space_size: int,
-        eps_start: float,
-        eps_end: float,
-        eps_decay: float,
-        learning_rate: float,
-        device: str,
-    ) -> None:
-        """
-        Initialize a Reinforcement Learning agent with an empty dictionary of state-action values (q_values), a learning rate and an epsilon.
-
-        ARGUMENTS:
-            - MYTODO...
-        """
-        
-        self.__name__ = "DeepAgent"
-        self.eps_start = eps_start
-        self.eps_end = eps_end
-        self.eps_decay = eps_decay
-        self.epsilon = eps_start
-        self.lr = learning_rate
-        self.device = device
-        self.n_observations = obs_space_size
-        self.n_actions = action_space_size
-        self.steps_done = 0
-    
-    def decay_epsilon(self) -> None:
-        eps_factor = np.exp(-1. * self.steps_done / self.eps_decay)
-        self.epsilon = self.eps_end + (self.eps_start - self.eps_end) * eps_factor
-
-
-class DQNAgent(DeepAgent):
+class DeepAgent():
 
     def __init__(
             self, 
@@ -61,46 +26,84 @@ class DQNAgent(DeepAgent):
             tau: float = 5e-3,
             batch_size: int = 128,
             memory_capacity: int = 10000,
+            net_type: str = None,
             device: str = None,
         ) -> None:
 
-        super().__init__(
-            obs_space_size=obs_space_size,
-            action_space_size=action_space_size,
-            eps_start=eps_start,
-            eps_end=eps_end,
-            eps_decay=eps_decay,
-            learning_rate=learning_rate,
-            device=device,
-        )
+        self.__name__ = "DeepAgent"
+        self._mode = "eval"
+        self.device = device
 
+        self.eps_start = eps_start
+        self.eps_end = eps_end
+        self.eps_decay = eps_decay
+        self.epsilon = eps_start
 
-        self.__name__ = "DQNAgent"
+        self.n_observations = obs_space_size
+        self.n_actions = action_space_size
+        self.lr = learning_rate
         self.gamma = gamma
         self.tau = tau
         self.bs = batch_size
         self.memory_capacity = memory_capacity
         self.memory = ReplayMemory(self.memory_capacity)
 
+        self.net_type = NetType.get_type(net_type)
         self.policy_net = None
         self.target_net = None
         self.optimizer = None
         self.criterion = nn.SmoothL1Loss()
+
+        self.steps_done = 0
     
-    def get_action(self, env: gym.Env, state: torch.Tensor) -> torch.Tensor:
+    @property
+    def mode(self) -> str:
+        return self._mode
+    
+    @mode.setter
+    def mode(self, mode: str) -> None:
+        if mode not in ["train", "eval"]:
+            raise ValueError(f"Mode {mode} not recognized. Choose between 'train' and 'eval'.")
+        self._mode = mode
+
+    def train(self) -> None:
+        """ Set the agent in training mode. """
+        self.mode = "train"
+        self.policy_net.train()
+        self.target_net.train()
+    
+    def eval(self) -> None:
+        """ Set the agent in evaluation mode. """
+        self.mode = "eval"
+        self.policy_net.eval()
+        self.target_net.eval()
+    
+    def decay_epsilon(self) -> None:
+        eps_factor = np.exp(-1. * self.steps_done / self.eps_decay)
+        self.epsilon = self.eps_end + (self.eps_start - self.eps_end) * eps_factor
+    
+    def get_action_tensor(self, env: gym.Env, state: torch.Tensor) -> torch.Tensor:
         
-        self.decay_epsilon()
+        if self.mode == "train": # train mode
+            self.decay_epsilon()
 
-        self.steps_done += 1
+            self.steps_done += 1
 
-        if random.random() > self.epsilon:
+            if random.random() > self.epsilon:
+                with torch.no_grad():
+                    # t.max(1) will return the largest column value of each row.
+                    # second column on max result is index of where max element was
+                    # found, so we pick action with the larger expected reward.
+                    return self.policy_net(state).max(1).indices.view(1, 1)
+            else:
+                return torch.tensor([[env.action_space.sample()]], device=self.device, dtype=torch.long)
+        else: # eval mode
             with torch.no_grad():
-                # t.max(1) will return the largest column value of each row.
-                # second column on max result is index of where max element was
-                # found, so we pick action with the larger expected reward.
                 return self.policy_net(state).max(1).indices.view(1, 1)
-        else:
-            return torch.tensor([[env.action_space.sample()]], device=self.device, dtype=torch.long)
+    
+    def push_to_memory(self, state, action, next_state, reward) -> None:
+        """ Push a transition to the memory without processing. """
+        self.memory.push(state, action, next_state, reward)
     
     def update_policy_net(self) -> None:
 
@@ -173,30 +176,74 @@ class DQNAgent(DeepAgent):
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
 
-class DQNAgentCartPole(DQNAgent):
+class DQNAgentCartPole(DeepAgent):
+
+    def __init__(self, **kwargs) -> None:
+
+        super().__init__(**kwargs)
+        self.__name__ = "DQNAgentCartpole"
+
+        if self.net_type == NetType.CONV:
+            self.policy_net = ConvDQNCartPole(self.n_observations, self.n_actions).to(self.device)
+            self.target_net = ConvDQNCartPole(self.n_observations, self.n_actions).to(self.device)
+        else:
+            raise ValueError(f"Network type {self.net_type.value} not implemented for CartPole.")
+        
+        self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
+        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
+    
+    def to_tensor_state(self, state) -> torch.Tensor:
+        if state is None:
+            return None
+        return torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+
+    def push_to_memory(self, state, action, next_state, reward) -> None:
+        state_tensor = self.to_tensor_state(state)
+        next_state_tensor = self.to_tensor_state(next_state)
+        reward_tensor = torch.tensor([reward], device=self.device)
+        self.memory.push(state_tensor, action, next_state_tensor, reward_tensor)
+    
+    def get_action(self, env: gym.Env, state) -> torch.Tensor:
+        state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+        return self.get_action_tensor(env, state_tensor)
+
+
+class DQNAgentSokoban(DeepAgent):
 
     def __init__(self, **kwargs) -> None:
 
         super().__init__(**kwargs)
         self.__name__ = "DQNAgentSokoban"
-        self.policy_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
-        self.target_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
+
+        if self.net_type == NetType.CONV:
+            self.policy_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+            self.target_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        elif self.net_type == NetType.FC:
+            self.policy_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+            self.target_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        else:
+            raise ValueError(f"Network type {self.net_type.value} not implemented for Sokoban.")
+
         self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
 
-
-class DQNAgentSokoban(DQNAgent):
-
-    def __init__(self, **kwargs) -> None:
-
-        super().__init__(**kwargs)
-        self.__name__ = "DQNAgentSokoban"
-        # self.policy_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        # self.target_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        self.policy_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        self.target_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
-        self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
+    def to_tensor_state(self, state) -> torch.Tensor:
+        if state is None:
+            return None
+        bloc_state = SokobanEnv.to_bloc_state(map=state[0], player_position=state[1])
+        state_tensor = torch.tensor(bloc_state, dtype=torch.float32, device=self.device).unsqueeze(0)
+        return state_tensor
+    
+    def push_to_memory(self, state, action, next_state, reward) -> None:
+        """ Push a transition to the memory with channels disentanglement preprocessing. """
+        state_tensor = self.to_tensor_state(state)
+        next_state_tensor = self.to_tensor_state(next_state)
+        reward_tensor = torch.tensor([reward], device=self.device)
+        self.memory.push(state_tensor, action, next_state_tensor, reward_tensor)
+    
+    def get_action(self, env: gym.Env, state) -> torch.Tensor:
+        state_tensor = self.to_tensor_state(state)
+        return self.get_action_tensor(env, state_tensor)
 
 
 DQN_AGENTS = {
@@ -207,7 +254,7 @@ DQN_AGENTS = {
 
 def main():
 
-    dqn_agent = DQNAgent(
+    dqn_agent = DeepAgent(
         obs_space_size=100,
         action_space_size=4,
     )

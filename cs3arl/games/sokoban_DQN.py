@@ -62,6 +62,7 @@ def main():
 
     agent = trainer.train(
         env=env,
+        net_type="fully_connected",
         experiment_name=EXPERIMENT_NAME,
     )
 

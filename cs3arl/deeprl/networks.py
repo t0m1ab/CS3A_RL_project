@@ -1,7 +1,24 @@
 import numpy as np
+from abc import abstractmethod
+from enum import Enum
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
+
+class NetType(Enum):
+    """ Enumerate types of neural networks. """
+    FC = "fully_connected"
+    CONV = "convolutional"
+
+    @staticmethod
+    def get_type(string_type: str):
+        if string_type is None:
+            return NetType.CONV
+        for net_type in NetType:
+            if net_type.value == string_type:
+                return net_type
+        raise ValueError(f"Unknown network type: {string_type}")
 
 
 class DQN(nn.Module):
@@ -9,6 +26,7 @@ class DQN(nn.Module):
     def __init__(self, verbose: bool=False):
         super(DQN, self).__init__()
         self.__name__ = "DQN"
+        self.net_type = None
         self.verbose = verbose
     
     def print(self, *args):
@@ -22,12 +40,17 @@ class DQN(nn.Module):
     def count_parameters(model):
         return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
+    @abstractmethod
+    def float(self, x: torch.Tensor) -> torch.Tensor:
+        raise NotImplementedError
 
-class DQNCartPole(DQN):
 
-    def __init__(self, n_observations: int, n_actions: int):
-        super(DQNCartPole, self).__init__()
+class ConvDQNCartPole(DQN):
+
+    def __init__(self, n_observations: int, n_actions: int, verbose: bool=False):
+        super().__init__(verbose=verbose)
         self.__name__ = "DQNCartPole"
+        self.net_type = NetType.CONV
         self.layer1 = nn.Linear(n_observations, 128)
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
@@ -50,6 +73,7 @@ class ConvDQNSokoban(DQN):
         """
         super().__init__(verbose=verbose)
         self.__name__ = "ConvDQNSokoban"
+        self.net_type = NetType.CONV
 
         map_edge_size = int(n_observations ** 0.5)
         if map_edge_size < 4:
@@ -90,6 +114,7 @@ class FCDQNSokoban(DQN):
         """
         super().__init__(verbose=verbose)
         self.__name__ = "FCDQNSokoban"
+        self.net_type = NetType.FC
 
         map_edge_size = int(n_observations ** 0.5)
         if map_edge_size < 4:
@@ -118,25 +143,28 @@ class FCDQNSokoban(DQN):
 
 def main():
 
-    # test DQNCartPole
-    net1 = DQNCartPole(100, 10)
-    print(f"{net1.__name__} is ready!")
+    VERBOSE = False
+
+    # test ConvDQNCartPole
+    net = ConvDQNCartPole(100, 10, verbose=VERBOSE)
+    print(f"{net.__name__} of type {net.net_type.value} is ready!")
 
     map_edge_size = 8
     input = torch.randn(32, 4, map_edge_size, map_edge_size) # 32 = batch size, 4 = number of channels
 
     # test ConvDQNSokoban
-    conv_net = ConvDQNSokoban(map_edge_size ** 2, 8, verbose=True)
-    _ = conv_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
-    print(f"{conv_net.__name__} is ready!")
-    # conv_net.enumerate_parameters()
-    # print(f"Number of parameters = {conv_net.count_parameters()}")
+    net = ConvDQNSokoban(map_edge_size ** 2, 8, verbose=VERBOSE)
+    _ = net(input) # don't forget to unsqueeze(0) if the batch contains a single element
+    print(f"{net.__name__} of type {net.net_type.value} is ready!")
+    # net.enumerate_parameters()
+    # print(f"Number of parameters = {net.count_parameters()}")
 
-    fc_net = FCDQNSokoban(map_edge_size ** 2, 8, verbose=True)
-    _ = fc_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
-    print(f"{fc_net.__name__} is ready!")
-    # fc_net.enumerate_parameters()
-    # print(f"Number of parameters = {fc_net.count_parameters()}")
+    net = FCDQNSokoban(map_edge_size ** 2, 8, verbose=VERBOSE)
+    _ = net(input) # don't forget to unsqueeze(0) if the batch contains a single element
+    print(f"{net.__name__} of type {net.net_type.value} is ready!")
+    # net.enumerate_parameters()
+    # print(f"Number of parameters = {net.count_parameters()}")
+
 
 if __name__ == "__main__":
     main()

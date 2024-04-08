@@ -9,8 +9,8 @@ from tqdm import tqdm
 import json
 
 import cs3arl
-from cs3arl.deeprl.agents import DeepAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban, DQN_AGENTS
-from cs3arl.sokoban.sokoban_env import SokobanEnv
+from cs3arl.deeprl.agents import DeepAgent, DQN_AGENTS
+# from cs3arl.sokoban.sokoban_env import SokobanEnv
 
 
 class DeepTrainer():
@@ -116,7 +116,7 @@ class DQNTrainer(DeepTrainer):
                 return agent_constructor
         raise ValueError(f"No agent found in DQN_AGENTS for environment '{env_name}'.")
     
-    def train(self, env: gym.Env, experiment_name: str = None) -> DeepAgent:
+    def train(self, env: gym.Env, net_type: str = None, experiment_name: str = None) -> DeepAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
         self.env_name = self.env.unwrapped.spec.id
@@ -147,58 +147,44 @@ class DQNTrainer(DeepTrainer):
             tau = self.tau,
             batch_size = self.bs,
             memory_capacity = self.memory_capacity,
+            net_type = net_type,
             device = self.device,
         )
+
+        self.agent.train() # set the agent in training mode
 
         self.experiment_name = experiment_name if experiment_name is not None else "DQN"
 
         loop_log = f"Training DQN on {self.env_name} for {self.n_episodes} episodes"
         for episode_idx in tqdm(range(self.n_episodes), desc=loop_log):
 
-            # Initialize the environment and get its state
-            state, _ = self.env.reset()
-
-            if self.is_sokoban_env: # convert to bloc state to feed a DQN
-                state = SokobanEnv.to_bloc_state(map=state[0], player_position=state[1])
-
-            ### MYTODO: convert state to tensor representation (list of values)
-            state_tensor = torch.tensor(state, dtype=torch.float32, device=self.device).unsqueeze(0)
+            state, _ = self.env.reset() # init the environment and get its state
             
-            # infinite loop with integer counter that breaks when the episode is done
-            for t in count():
+            for t in count(): # infinite loop with integer counter that breaks when the episode is done
 
-                action = self.agent.get_action(self.env, state_tensor)
+                action = self.agent.get_action(self.env, state)
 
                 observation, reward, terminated, truncated, _ = self.env.step(action.item())
 
-                if self.is_sokoban_env: # convert to bloc state to feed a DQN
-                    observation = SokobanEnv.to_bloc_state(map=observation[0], player_position=observation[1])
-
-                reward_tensor = torch.tensor([reward], device=self.device)
-
                 done = terminated or truncated
 
-                if terminated: # no next state if the episode is terminated
-                    next_state_tensor = None
+                if terminated:
+                    next_state = None
                 else:
-                    next_state_tensor = torch.tensor(observation, dtype=torch.float32, device=self.device).unsqueeze(0)
+                    next_state = observation
 
-                # Store the transition in memory
-                self.agent.memory.push(state_tensor, action, next_state_tensor, reward_tensor)
+                self.agent.push_to_memory(state, action, next_state, reward)
 
-                # Move to the next state
-                state_tensor = next_state_tensor
+                state = next_state
 
                 # Perform one step of the optimization (on the policy network)
-                self.agent.update_policy_net() # optimize_model()
+                self.agent.update_policy_net()
 
-                # Soft update of the target network's weights
-                # θ′ ← τ θ + (1 −τ )θ′
+                # Soft update of the target network's weights using the following: θ′ ← τ θ + (1 −τ )θ′
                 self.agent.update_target_net()
 
                 if done:
                     self.episode_durations.append(t + 1)
-                    # self.plot_durations()
                     break
             
             # only save results at checkpoint if a number of checkpoints is specified
@@ -208,6 +194,7 @@ class DQNTrainer(DeepTrainer):
                 self.save_infos_json(
                     experiment_name = checkpoint_name,
                     observation_space_size = obs_space_size,
+                    net_type = net_type,
                     action_space_size = action_space_size,
                     n_episodes = episode_idx + 1,
                     episode_durations = self.episode_durations,
@@ -225,6 +212,7 @@ class DQNTrainer(DeepTrainer):
             self.save_infos_json(
                 observation_space_size = obs_space_size,
                 action_space_size = action_space_size,
+                net_type = net_type,
                 n_episodes = self.n_episodes,
                 episode_durations = self.episode_durations,
             )

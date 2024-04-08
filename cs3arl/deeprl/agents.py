@@ -162,9 +162,15 @@ class DQNAgent(DeepAgent):
         self.target_net.load_state_dict(target_net_dict)
     
     def save_agent(self, save_path: str, experiment_name: str = None) -> None:
+        """ Save the agent's policy network. """
         fname = experiment_name if experiment_name is not None else self.__name__
         Path(save_path).mkdir(parents=True, exist_ok=True)
         torch.save(self.policy_net.state_dict(), os.path.join(save_path, f"{fname}.pt"))
+    
+    def from_pretrained(self, path: str) -> None:
+        """ Load a pretrained network as policy network. """
+        self.policy_net.load_state_dict(torch.load(path))
+        self.target_net.load_state_dict(self.policy_net.state_dict())
 
 
 class DQNAgentCartPole(DQNAgent):
@@ -185,10 +191,18 @@ class DQNAgentSokoban(DQNAgent):
 
         super().__init__(**kwargs)
         self.__name__ = "DQNAgentSokoban"
-        self.policy_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
-        self.target_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        # self.policy_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        # self.target_net = ConvDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.policy_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
+        self.target_net = FCDQNSokoban(self.n_observations, self.n_actions).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict()) # copy policy into target
         self.optimizer = optim.AdamW(self.policy_net.parameters(), lr=self.lr, amsgrad=True)
+
+
+DQN_AGENTS = {
+    "cartpole": DQNAgentCartPole,
+    "sokoban": DQNAgentSokoban,
+}
 
 
 def main():

@@ -9,7 +9,7 @@ from tqdm import tqdm
 import json
 
 import cs3arl
-from cs3arl.deeprl.agents import DeepAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban
+from cs3arl.deeprl.agents import DeepAgent, DQNAgent, DQNAgentCartPole, DQNAgentSokoban, DQN_AGENTS
 from cs3arl.sokoban.sokoban_env import SokobanEnv
 
 
@@ -47,7 +47,7 @@ class DeepTrainer():
             print("Warning: MPS is not available. Using CPU instead.")
             self.device = "cpu"
         
-    def save_results_to_json(self, **kwargs) -> None:
+    def save_infos_json(self, **kwargs) -> None:
 
         exp_name = kwargs["experiment_name"] if "experiment_name" in kwargs else self.experiment_name
 
@@ -58,8 +58,8 @@ class DeepTrainer():
         }
 
         for key, data in kwargs.items():
-            data_dict[key] = data
-        
+            data_dict[str(key)] = data
+                
         save_path = os.path.join(self.save_dir, self.experiment_name)
         filename = f"{self.experiment_name}.json"
         Path(save_path).mkdir(parents=True, exist_ok=True)
@@ -68,11 +68,6 @@ class DeepTrainer():
 
 
 class DQNTrainer(DeepTrainer):
-
-    KEYWORD_TO_AGENT = {
-        "cartpole": DQNAgentCartPole,
-        "sokoban": DQNAgentSokoban,
-    }
     
     def __init__(
             self,
@@ -105,42 +100,43 @@ class DQNTrainer(DeepTrainer):
         self.memory_capacity = memory_capacity
         self.n_checkpoints = n_checkpoints
         self.episode_durations = []
+        self.is_sokoban_env = False
     
     def is_checkpoint_episode(self, episode_idx: int) -> bool:
         """ Check if the current episode is a checkpoint episode which triggers save/plot methods. """
         idx = episode_idx + 1
         return idx % (self.n_episodes // self.n_checkpoints) == 0
     
-    def __is_sokoban_env(self):
-        if self.env_name is None:
-            raise ValueError("No environment was set.")
-        return "sokoban" in self.env_name.lower()
-    
     def __get_agent_constructor(self, env_name: str = None):
         """ Get the constructor of the DQN agent based on the environment name. """
-        env_name = env_name if env_name is not None else self.env_name
-        for keyword, agent_constructor in self.KEYWORD_TO_AGENT.items():
+        for keyword, agent_constructor in DQN_AGENTS.items():
             if keyword in env_name.lower():
+                if "sokoban" in keyword:
+                    self.is_sokoban_env = True
                 return agent_constructor
-        raise ValueError(f"No agent found in {DQNTrainer.KEYWORD_TO_AGENT} for environment '{env_name}'.")
+        raise ValueError(f"No agent found in DQN_AGENTS for environment '{env_name}'.")
     
     def train(self, env: gym.Env, experiment_name: str = None) -> DeepAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
         self.env_name = self.env.unwrapped.spec.id
 
+        # get the constructor of the agent based on the environment name
+        agent_constructor = self.__get_agent_constructor(self.env_name)
+
         # get the size of the observation space
-        if self.__is_sokoban_env():
+        if self.is_sokoban_env:
             (map, _), _ = self.env.reset()
             if map.shape[0] != map.shape[1]:
-                raise ValueError(f"Observation returned by the environnement is not a square map: shape={obs[0].shape}")
-            obs_space_size = map.shape[0] * map.shape[1] # number of cells in the map
+                raise ValueError(f"Observation returned by the environnement is not a square map: shape={map.shape}")
+            obs_space_size = int(map.shape[0] * map.shape[1]) # number of cells in the map
         else:
             obs_space_size = len(self.env.reset()[0])
         # get the size of the action space
-        action_space_size = self.env.action_space.n
+        action_space_size = int(self.env.action_space.n)
 
-        self.agent = self.__get_agent_constructor()(
+        # init the agent
+        self.agent = agent_constructor(
             obs_space_size = obs_space_size,
             action_space_size = action_space_size,
             eps_start = self.eps_start,
@@ -162,7 +158,7 @@ class DQNTrainer(DeepTrainer):
             # Initialize the environment and get its state
             state, _ = self.env.reset()
 
-            if self.__is_sokoban_env(): # convert to bloc state to feed a DQN
+            if self.is_sokoban_env: # convert to bloc state to feed a DQN
                 state = SokobanEnv.to_bloc_state(map=state[0], player_position=state[1])
 
             ### MYTODO: convert state to tensor representation (list of values)
@@ -175,7 +171,7 @@ class DQNTrainer(DeepTrainer):
 
                 observation, reward, terminated, truncated, _ = self.env.step(action.item())
 
-                if self.__is_sokoban_env(): # convert to bloc state to feed a DQN
+                if self.is_sokoban_env: # convert to bloc state to feed a DQN
                     observation = SokobanEnv.to_bloc_state(map=observation[0], player_position=observation[1])
 
                 reward_tensor = torch.tensor([reward], device=self.device)
@@ -209,8 +205,10 @@ class DQNTrainer(DeepTrainer):
             if self.n_checkpoints is not None and self.is_checkpoint_episode(episode_idx):
                 checkpoint_name = f"{self.experiment_name}_{episode_idx+1}-{self.n_episodes}"
                 # save data to JSON
-                self.save_results_to_json(
+                self.save_infos_json(
                     experiment_name = checkpoint_name,
+                    observation_space_size = obs_space_size,
+                    action_space_size = action_space_size,
                     n_episodes = episode_idx + 1,
                     episode_durations = self.episode_durations,
                 )
@@ -224,14 +222,19 @@ class DQNTrainer(DeepTrainer):
 
         if self.save_results:
             # save data to JSON
-            self.save_results_to_json(
+            self.save_infos_json(
+                observation_space_size = obs_space_size,
+                action_space_size = action_space_size,
                 n_episodes = self.n_episodes,
                 episode_durations = self.episode_durations,
             )
             # create plots
             self.plot_durations()
             # save agent
-            self.agent.save_agent(os.path.join(self.save_dir, self.experiment_name))
+            self.agent.save_agent(
+                save_path = os.path.join(self.save_dir, self.experiment_name),
+                experiment_name = self.experiment_name,
+            )
         
         return self.agent
     

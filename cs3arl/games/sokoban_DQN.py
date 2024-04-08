@@ -1,5 +1,5 @@
 """
-Solving Cartpole with DQN
+Solving Sokoban with DQN
 =========================================================================================
 Inspired from: https://pytorch.org/tutorials/intermediate/reinforcement_q_learning.html
 """
@@ -7,6 +7,7 @@ Inspired from: https://pytorch.org/tutorials/intermediate/reinforcement_q_learni
 import gymnasium as gym
 
 from cs3arl.deeprl.trainers import DQNTrainer
+from cs3arl.deeprl.agents import DQNAgentSokoban
 from cs3arl.sokoban.dataloaders import MySokobanLoader
 from cs3arl.sokoban.sokoban_env import SokobanEnv
 
@@ -42,30 +43,27 @@ def main():
     trainer = DQNTrainer(
         batch_size = 128,
         gamma = 0.99,
-        eps_start = 0.5,
+        eps_start = 0.9,
         eps_end = 0.05,
         eps_decay = 100,
         tau = 5e-3,
-        learning_rate = 1e-2,
-        n_episodes = 5000,
-        memory_capacity = 100,
+        learning_rate = 1e-4,
+        n_episodes = 1000,
+        memory_capacity = 1000,
         device = None,
         save_dir = None,
-        save_results = False,
+        save_results = True,
         n_checkpoints = 10,
     )
 
     # name of the experiment (used to create a subfolder to save the plots related to this agent/training)
     # if EXPERIMENT_NAME is set to None, a default name will be used based on the name of the trainer (e.g. DQNTrainer => DQN)
-    EXPERIMENT_NAME = "DQN-sokoban-test"
+    EXPERIMENT_NAME = "DQN-sokoban"
 
     agent = trainer.train(
         env=env,
         experiment_name=EXPERIMENT_NAME,
     )
-
-    # save plots
-    # trainer.plot_durations()
 
 
 if __name__ == "__main__":

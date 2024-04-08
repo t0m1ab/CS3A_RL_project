@@ -64,8 +64,9 @@ class SokobanEnv(Env):
     ]
 
     RESET_MODES = [
-        "random",
-        "next",
+        "fixed", # always reset to the same map (first map of the collection)
+        "random", # reset to a random map in the collection
+        "next", # reset to the next map in the collection
     ]
 
     CELL_DIM = 16 # length of the edge of a square cell for visualization
@@ -204,6 +205,8 @@ class SokobanEnv(Env):
                 self.map_id = np.random.randint(0, len(self.map_collection))
             elif self.reset_mode == "next":
                 self.map_id = (self.map_id + 1) % len(self.map_collection)
+            elif self.reset_mode == "fixed":
+                self.map_id = 0
             self.init_map = self.map_collection[self.map_id].copy().astype(np.uint8)
         
         self.reset_episode()

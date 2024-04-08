@@ -6,9 +6,14 @@ import torch.nn.functional as F
 
 class DQN(nn.Module):
 
-    def __init__(self):
+    def __init__(self, verbose: bool=False):
         super(DQN, self).__init__()
         self.__name__ = "DQN"
+        self.verbose = verbose
+    
+    def print(self, *args):
+        if self.verbose:
+            print(*args)
     
     def enumerate_parameters(self):
         for pname, param in self.named_parameters():
@@ -37,13 +42,13 @@ class DQNCartPole(DQN):
 
 class ConvDQNSokoban(DQN):
 
-    def __init__(self, n_observations: int, n_actions: int):
+    def __init__(self, n_observations: int, n_actions: int, verbose: bool=False):
         """ 
         ARGUMENTS:
             - n_observations: should be equal to the number of cells in the map which is considered squared (e.g. 10x10 => 100)
             - n_actions: should be equal to the number of possible actions (4 or 8 for Sokoban)
         """
-        super().__init__()
+        super().__init__(verbose=verbose)
         self.__name__ = "ConvDQNSokoban"
 
         map_edge_size = int(n_observations ** 0.5)
@@ -59,32 +64,31 @@ class ConvDQNSokoban(DQN):
         self.fcc2 = nn.Linear(self.fcc_dim // 2, n_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        print_shapes = False
-        print(x.shape) if print_shapes else None
+        self.print("input ->", x.shape)
         x = F.relu(self.conv1(x))
-        print(x.shape) if print_shapes else None
+        self.print("conv1 ->", x.shape)
         x = F.relu(self.conv2(x))
-        print(x.shape) if print_shapes else None
+        self.print("conv2 ->", x.shape)
         x = F.relu(self.conv3(x))
-        print(x.shape) if print_shapes else None
+        self.print("conv3 ->", x.shape)
         x = self.flatten(x)
-        print(x.shape) if print_shapes else None
+        self.print("flatten ->", x.shape)
         x = F.relu(self.fcc1(x))
-        print(x.shape) if print_shapes else None
+        self.print("fcc1 ->", x.shape)
         x = self.fcc2(x)
-        print(x.shape) if print_shapes else None
+        self.print("fcc2 ->", x.shape)
         return x
 
 
 class FCDQNSokoban(DQN):
 
-    def __init__(self, n_observations: int, n_actions: int):
+    def __init__(self, n_observations: int, n_actions: int, verbose: bool=False):
         """ 
         ARGUMENTS:
             - n_observations: should be equal to the number of cells in the map which is considered squared (e.g. 10x10 => 100)
             - n_actions: should be equal to the number of possible actions (4 or 8 for Sokoban)
         """
-        super().__init__()
+        super().__init__(verbose=verbose)
         self.__name__ = "FCDQNSokoban"
 
         map_edge_size = int(n_observations ** 0.5)
@@ -100,15 +104,15 @@ class FCDQNSokoban(DQN):
         self.fc_out = nn.Linear(self.dim2, n_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        print_shapes = False
+        self.print("input ->", x.shape)
         x = self.flatten(x)
-        print(x.shape) if print_shapes else None
+        self.print("flatten ->", x.shape)
         x = F.relu(self.fc_in(x))
-        print(x.shape) if print_shapes else None
+        self.print("fc_in ->", x.shape)
         x = F.relu(self.fc1(x))
-        print(x.shape) if print_shapes else None
+        self.print("fc_1 ->", x.shape)
         x = self.fc_out(x)
-        print(x.shape) if print_shapes else None
+        self.print("fc_out ->", x.shape)
         return x
 
 
@@ -122,13 +126,13 @@ def main():
     input = torch.randn(32, 4, map_edge_size, map_edge_size) # 32 = batch size, 4 = number of channels
 
     # test ConvDQNSokoban
-    conv_net = ConvDQNSokoban(map_edge_size ** 2, 8)
+    conv_net = ConvDQNSokoban(map_edge_size ** 2, 8, verbose=True)
     _ = conv_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
     print(f"{conv_net.__name__} is ready!")
     # conv_net.enumerate_parameters()
     # print(f"Number of parameters = {conv_net.count_parameters()}")
 
-    fc_net = FCDQNSokoban(map_edge_size ** 2, 8)
+    fc_net = FCDQNSokoban(map_edge_size ** 2, 8, verbose=True)
     _ = fc_net(input) # don't forget to unsqueeze(0) if the batch contains a single element
     print(f"{fc_net.__name__} is ready!")
     # fc_net.enumerate_parameters()

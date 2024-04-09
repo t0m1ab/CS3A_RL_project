@@ -29,7 +29,7 @@ def main():
         )
 
     # collection of maps
-    map_collection = MySokobanLoader(level="easy", file_id=0)
+    map_collection = MySokobanLoader(level="easy", file_id=4)
 
     env = gym.make(
         id=f"{namespace}/{env_id}",
@@ -41,7 +41,7 @@ def main():
 
     # DQN trainer
     trainer = DQNTrainer(
-        batch_size = 128,
+        batch_size = 64,
         gamma = 0.99,
         eps_start = 0.9,
         eps_end = 0.05,
@@ -62,7 +62,7 @@ def main():
 
     agent = trainer.train(
         env=env,
-        net_type="fully_connected",
+        net_type="convolutional",
         experiment_name=EXPERIMENT_NAME,
     )
 

@@ -45,12 +45,12 @@ class DQN(nn.Module):
         raise NotImplementedError
 
 
-class ConvDQNCartPole(DQN):
+class DQNCartPole(DQN):
 
     def __init__(self, n_observations: int, n_actions: int, verbose: bool=False):
         super().__init__(verbose=verbose)
         self.__name__ = "DQNCartPole"
-        self.net_type = NetType.CONV
+        self.net_type = NetType.FC
         self.layer1 = nn.Linear(n_observations, 128)
         self.layer2 = nn.Linear(128, 128)
         self.layer3 = nn.Linear(128, n_actions)
@@ -81,20 +81,21 @@ class ConvDQNSokoban(DQN):
 
         self.conv1 = nn.Conv2d(4, 16, kernel_size=2, padding="same", padding_mode="reflect")
         self.conv2 = nn.Conv2d(16, 16, kernel_size=2, stride=2, padding="valid")
-        self.conv3 = nn.Conv2d(16, 16, kernel_size=2, stride=2, padding="valid")
+        self.bn1 = nn.BatchNorm2d(16)
+        self.bn2 = nn.BatchNorm2d(16)
         self.flatten = nn.Flatten()
-        self.fcc_dim = 16 * (map_edge_size // 4) ** 2 # should be 64 for a 10x10 map
+        self.fcc_dim = 16 * (map_edge_size // 2) ** 2 # should be 64 for a 10x10 map
         self.fcc1 = nn.Linear(self.fcc_dim, self.fcc_dim // 2)
         self.fcc2 = nn.Linear(self.fcc_dim // 2, n_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         self.print("input ->", x.shape)
-        x = F.relu(self.conv1(x))
+        x = F.relu(self.bn1(self.conv1(x)))
+        # x = F.relu(self.conv1(x))
         self.print("conv1 ->", x.shape)
-        x = F.relu(self.conv2(x))
+        x = F.relu(self.bn2(self.conv2(x)))
+        # x = F.relu(self.conv2(x))
         self.print("conv2 ->", x.shape)
-        x = F.relu(self.conv3(x))
-        self.print("conv3 ->", x.shape)
         x = self.flatten(x)
         self.print("flatten ->", x.shape)
         x = F.relu(self.fcc1(x))
@@ -146,7 +147,7 @@ def main():
     VERBOSE = False
 
     # test ConvDQNCartPole
-    net = ConvDQNCartPole(100, 10, verbose=VERBOSE)
+    net = DQNCartPole(100, 10, verbose=VERBOSE)
     print(f"{net.__name__} of type {net.net_type.value} is ready!")
 
     map_edge_size = 8

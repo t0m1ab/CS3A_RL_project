@@ -9,7 +9,7 @@ import torch.optim as optim
 
 from cs3arl.sokoban.sokoban_env import SokobanEnv
 from cs3arl.deeprl.buffers import Transition, ReplayMemory
-from cs3arl.deeprl.networks import ConvDQNCartPole, ConvDQNSokoban, FCDQNSokoban, NetType
+from cs3arl.deeprl.networks import DQNCartPole, ConvDQNSokoban, FCDQNSokoban, NetType
 
 
 class DeepAgent():
@@ -94,7 +94,10 @@ class DeepAgent():
                     # t.max(1) will return the largest column value of each row.
                     # second column on max result is index of where max element was
                     # found, so we pick action with the larger expected reward.
-                    return self.policy_net(state).max(1).indices.view(1, 1)
+                    self.eval()
+                    output = self.policy_net(state).max(1).indices.view(1, 1)
+                    self.train()
+                    return output
             else:
                 return torch.tensor([[env.action_space.sample()]], device=self.device, dtype=torch.long)
         else: # eval mode
@@ -183,9 +186,9 @@ class DQNAgentCartPole(DeepAgent):
         super().__init__(**kwargs)
         self.__name__ = "DQNAgentCartpole"
 
-        if self.net_type == NetType.CONV:
-            self.policy_net = ConvDQNCartPole(self.n_observations, self.n_actions).to(self.device)
-            self.target_net = ConvDQNCartPole(self.n_observations, self.n_actions).to(self.device)
+        if self.net_type == NetType.FC:
+            self.policy_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
+            self.target_net = DQNCartPole(self.n_observations, self.n_actions).to(self.device)
         else:
             raise ValueError(f"Network type {self.net_type.value} not implemented for CartPole.")
         

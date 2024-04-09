@@ -115,7 +115,7 @@ class DQNTrainer(DeepTrainer):
                     self.is_sokoban_env = True
                 return agent_constructor
         raise ValueError(f"No agent found in DQN_AGENTS for environment '{env_name}'.")
-    
+
     def train(self, env: gym.Env, net_type: str = None, experiment_name: str = None) -> DeepAgent:
         
         self.env = gym.wrappers.RecordEpisodeStatistics(env, deque_size=self.n_episodes)
@@ -155,17 +155,18 @@ class DQNTrainer(DeepTrainer):
 
         self.experiment_name = experiment_name if experiment_name is not None else "DQN"
 
-        loop_log = f"Training DQN on {self.env_name} for {self.n_episodes} episodes"
-        for episode_idx in tqdm(range(self.n_episodes), desc=loop_log):
+        pbar = tqdm(range(self.n_episodes), desc=f"Training DQN on {self.env_name} for {self.n_episodes} episodes")
+        for episode_idx in pbar:
 
             state, _ = self.env.reset() # init the environment and get its state
+            cum_reward = 0
             
             for t in count(): # infinite loop with integer counter that breaks when the episode is done
 
                 action = self.agent.get_action(self.env, state)
 
                 observation, reward, terminated, truncated, _ = self.env.step(action.item())
-
+                cum_reward += reward
                 done = terminated or truncated
 
                 if terminated:
@@ -186,6 +187,13 @@ class DQNTrainer(DeepTrainer):
                 if done:
                     self.episode_durations.append(t + 1)
                     break
+            
+            # update progress bar
+            pbar.set_postfix({
+                "last_ep": self.episode_durations[-1],
+                "mean_ep": np.mean(self.episode_durations[-100:]),
+                "cum_reward": f"{cum_reward:.1f}",
+            })
             
             # only save results at checkpoint if a number of checkpoints is specified
             if self.n_checkpoints is not None and self.is_checkpoint_episode(episode_idx):

@@ -113,7 +113,7 @@ def demo():
 
     # load env
     env = load_sokoban_env(
-        map_collection=MySokobanLoader(level="easy", file_id=0),
+        map_collection=MySokobanLoader(level="easy", file_id=4),
         merge_move_push=True,
         reset_mode="next",
         max_steps=99, # => 100 frames max with the initial state

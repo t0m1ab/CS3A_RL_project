@@ -19,8 +19,10 @@ class DeepAgent():
             obs_space_size: int,
             action_space_size: int,
             eps_start: float = 0.9,
-            eps_end: float = 0.05,
-            eps_decay: float = 1000,
+            eps_max: float = 0.9,
+            eps_min: float = 0.05,
+            eps_start_decay: float = 0.1,
+            eps_end_decay: float = 0.9,
             learning_rate: float = 1e-4,
             gamma: float = 0.99,
             tau: float = 5e-3,
@@ -34,27 +36,35 @@ class DeepAgent():
         self._mode = "eval"
         self.device = device
 
-        self.eps_start = eps_start
-        self.eps_end = eps_end
-        self.eps_decay = eps_decay
-        self.epsilon = eps_start
+        # exploration parameters
+        self.progress = 0 # float in [0,1] to track the progress of the training (= episodes_done / n_episodes)
+        self.eps_max = eps_max
+        self.eps_min = eps_min
+        self.eps_start_decay = eps_start_decay
+        self.eps_end_decay = eps_end_decay
+        self.decay_factor = (self.eps_end_decay - self.eps_start_decay) / 5
+        self.epsilon = self.eps_max
+        if not self.eps_max > self.eps_min:
+            raise ValueError("eps_max must be strictly greater than eps_min.")
+        if not self.eps_start_decay < self.eps_end_decay:
+            raise ValueError("eps_start_decay must be strictly less than eps_end_decay.")
 
+        # learning parameters
         self.n_observations = obs_space_size
         self.n_actions = action_space_size
-        self.lr = learning_rate
         self.gamma = gamma
+        self.lr = learning_rate
         self.tau = tau
         self.bs = batch_size
         self.memory_capacity = memory_capacity
         self.memory = ReplayMemory(self.memory_capacity)
 
+        # networks
         self.net_type = NetType.get_type(net_type)
         self.policy_net = None
         self.target_net = None
         self.optimizer = None
         self.criterion = nn.SmoothL1Loss()
-
-        self.steps_done = 0
     
     @property
     def mode(self) -> str:
@@ -78,17 +88,23 @@ class DeepAgent():
         self.policy_net.eval()
         self.target_net.eval()
     
-    def decay_epsilon(self) -> None:
-        eps_factor = np.exp(-1. * self.steps_done / self.eps_decay)
-        self.epsilon = self.eps_end + (self.eps_start - self.eps_end) * eps_factor
+    def set_episode(self, episode_idx: int, total_episodes: int) -> None:
+        """ Update the agent's progress. """
+        self.progress = float(episode_idx) / total_episodes
+        self.epsilon = self.get_epsilon()
+
+    def get_epsilon(self) -> None:
+        if self.progress < self.eps_start_decay:
+            return self.eps_max
+        elif self.progress >= self.eps_end_decay:
+            return self.eps_min
+        else:
+            eps_factor = np.exp(-1. * (self.progress - self.eps_start_decay) / self.decay_factor)
+            return self.eps_min + (self.eps_max - self.eps_min) * eps_factor
     
     def get_action_tensor(self, env: gym.Env, state: torch.Tensor) -> torch.Tensor:
         
         if self.mode == "train": # train mode
-            self.decay_epsilon()
-
-            self.steps_done += 1
-
             if random.random() > self.epsilon:
                 with torch.no_grad():
                     # t.max(1) will return the largest column value of each row.

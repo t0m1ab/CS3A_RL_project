@@ -20,9 +20,10 @@ def main():
     trainer = DQNTrainer(
         batch_size = 128,
         gamma = 0.99,
-        eps_start = 0.9,
-        eps_end = 0.05,
-        eps_decay = 100,
+        eps_max = 0.9,
+        eps_min = 0.05,  
+        eps_start_decay = 0.1,
+        eps_end_decay = 0.9,
         tau = 5e-3,
         learning_rate = 1e-4,
         n_episodes = 1000,
@@ -39,6 +40,7 @@ def main():
 
     agent = trainer.train(
         env=env,
+        net_type="fully_connected",
         experiment_name=EXPERIMENT_NAME,
     )
 

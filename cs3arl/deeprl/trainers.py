@@ -74,8 +74,10 @@ class DQNTrainer(DeepTrainer):
             batch_size: int = 128,
             gamma: float = 0.99,
             eps_start: float = 0.9,
-            eps_end: float = 0.05,
-            eps_decay: float = 100,
+            eps_max: float = 0.9,
+            eps_min: float = 0.05,
+            eps_start_decay: float = 0.1,
+            eps_end_decay: float = 0.9,
             tau: float = 5e-3,
             learning_rate: float = 1e-4,
             n_episodes: int = 50, # low by default because can be slow if CPU
@@ -92,8 +94,10 @@ class DQNTrainer(DeepTrainer):
         self.bs = batch_size
         self.gamma = gamma
         self.eps_start = eps_start
-        self.eps_end = eps_end
-        self.eps_decay = eps_decay
+        self.eps_max = eps_max
+        self.eps_min = eps_min
+        self.eps_start_decay = eps_start_decay
+        self.eps_end_decay = eps_end_decay
         self.tau = tau
         self.lr = learning_rate
         self.n_episodes = n_episodes
@@ -140,8 +144,10 @@ class DQNTrainer(DeepTrainer):
             obs_space_size = obs_space_size,
             action_space_size = action_space_size,
             eps_start = self.eps_start,
-            eps_end = self.eps_end,
-            eps_decay = self.eps_decay,
+            eps_max = self.eps_max,
+            eps_min = self.eps_min,
+            eps_start_decay = self.eps_start_decay,
+            eps_end_decay = self.eps_end_decay,
             learning_rate = self.lr,
             gamma = self.gamma,
             tau = self.tau,
@@ -157,6 +163,9 @@ class DQNTrainer(DeepTrainer):
 
         pbar = tqdm(range(self.n_episodes), desc=f"Training DQN on {self.env_name} for {self.n_episodes} episodes")
         for episode_idx in pbar:
+
+            # update agent internal state (exploration rate, etc.) 
+            self.agent.set_episode(episode_idx, self.n_episodes)
 
             state, _ = self.env.reset() # init the environment and get its state
             cum_reward = 0
@@ -246,7 +255,7 @@ class DQNTrainer(DeepTrainer):
             plt.clf()
             plt.title(f"Training [{episode_idx}/{self.n_episodes}]")
         else:
-            plt.title(f"Result of {self.experiment_name} training")
+            plt.title(f"{self.experiment_name} training")
         plt.xlabel("Episode")
         plt.ylabel("Duration")
         plt.plot(durations_t.numpy())
@@ -265,6 +274,26 @@ class DQNTrainer(DeepTrainer):
         Path(save_path).mkdir(parents=True, exist_ok=True)
         plt.savefig(os.path.join(save_path, filename))
         plt.close()
+    
+    def plot_exploration_decay(self):
+        """
+        Plot the exploration rate decay along the training.
+        """
+        if self.agent is None:
+            raise ValueError("Agent is not initialized. Please train the agent first.")
+        
+        epsilons = []
+        for episode_idx in range(self.n_episodes):
+            self.agent.set_episode(episode_idx, self.n_episodes)
+            epsilons.append(self.agent.epsilon)
+        
+        plt.plot(epsilons)
+        plt.title("Exploration parameter decay")
+        plt.xticks(np.arange(0, self.n_episodes, step=self.n_episodes//10))
+        plt.yticks(np.arange(0, 1.1, step=0.1))
+        plt.xlabel("episode")
+        plt.ylabel("exploration parameter $\epsilon$")
+        plt.savefig(os.path.join(self.save_dir, self.experiment_name, "exploration_decay.png"))
 
 
 def main():

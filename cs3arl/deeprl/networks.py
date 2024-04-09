@@ -79,22 +79,21 @@ class ConvDQNSokoban(DQN):
         if map_edge_size < 4:
             raise ValueError("The map should be at least 4x4")
 
-        self.conv1 = nn.Conv2d(4, 16, kernel_size=2, padding="same", padding_mode="reflect")
-        self.conv2 = nn.Conv2d(16, 16, kernel_size=2, stride=2, padding="valid")
-        self.bn1 = nn.BatchNorm2d(16)
-        self.bn2 = nn.BatchNorm2d(16)
+        self.n_channels = 8
+        self.conv1 = nn.Conv2d(4, self.n_channels, kernel_size=2, padding="same", padding_mode="reflect")
+        self.conv2 = nn.Conv2d(self.n_channels, self.n_channels, kernel_size=2, stride=2, padding="valid")
+        self.bn1 = nn.BatchNorm2d(self.n_channels)
+        self.bn2 = nn.BatchNorm2d(self.n_channels)
         self.flatten = nn.Flatten()
-        self.fcc_dim = 16 * (map_edge_size // 2) ** 2 # should be 64 for a 10x10 map
+        self.fcc_dim = self.n_channels * (map_edge_size // 2) ** 2 # should be 64 for a 10x10 map
         self.fcc1 = nn.Linear(self.fcc_dim, self.fcc_dim // 2)
         self.fcc2 = nn.Linear(self.fcc_dim // 2, n_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         self.print("input ->", x.shape)
         x = F.relu(self.bn1(self.conv1(x)))
-        # x = F.relu(self.conv1(x))
         self.print("conv1 ->", x.shape)
         x = F.relu(self.bn2(self.conv2(x)))
-        # x = F.relu(self.conv2(x))
         self.print("conv2 ->", x.shape)
         x = self.flatten(x)
         self.print("flatten ->", x.shape)
@@ -150,7 +149,7 @@ def main():
     net = DQNCartPole(100, 10, verbose=VERBOSE)
     print(f"{net.__name__} of type {net.net_type.value} is ready!")
 
-    map_edge_size = 8
+    map_edge_size = 4
     input = torch.randn(32, 4, map_edge_size, map_edge_size) # 32 = batch size, 4 = number of channels
 
     # test ConvDQNSokoban
@@ -158,13 +157,13 @@ def main():
     _ = net(input) # don't forget to unsqueeze(0) if the batch contains a single element
     print(f"{net.__name__} of type {net.net_type.value} is ready!")
     # net.enumerate_parameters()
-    # print(f"Number of parameters = {net.count_parameters()}")
+    print(f"Number of parameters = {net.count_parameters()}")
 
     net = FCDQNSokoban(map_edge_size ** 2, 8, verbose=VERBOSE)
     _ = net(input) # don't forget to unsqueeze(0) if the batch contains a single element
     print(f"{net.__name__} of type {net.net_type.value} is ready!")
     # net.enumerate_parameters()
-    # print(f"Number of parameters = {net.count_parameters()}")
+    print(f"Number of parameters = {net.count_parameters()}")
 
 
 if __name__ == "__main__":

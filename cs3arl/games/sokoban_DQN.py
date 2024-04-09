@@ -29,7 +29,7 @@ def main():
         )
 
     # collection of maps
-    map_collection = MySokobanLoader(level="easy", file_id=4)
+    map_collection = MySokobanLoader(level="easy", file_id=0)
 
     env = gym.make(
         id=f"{namespace}/{env_id}",
@@ -43,9 +43,10 @@ def main():
     trainer = DQNTrainer(
         batch_size = 64,
         gamma = 0.99,
-        eps_start = 0.9,
-        eps_end = 0.05,
-        eps_decay = 100,
+        eps_max = 0.9, # initial maximum exploration rate
+        eps_min = 0.05, # final minimum exploration rate
+        eps_start_decay = 0.1, # percentage of the total number of episodes
+        eps_end_decay = 0.8, # percentage of the total number of episodes
         tau = 5e-3,
         learning_rate = 1e-4,
         n_episodes = 1000,
@@ -65,6 +66,8 @@ def main():
         net_type="convolutional",
         experiment_name=EXPERIMENT_NAME,
     )
+
+    trainer.plot_exploration_decay()
 
 
 if __name__ == "__main__":

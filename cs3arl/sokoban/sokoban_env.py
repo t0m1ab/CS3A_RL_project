@@ -1,11 +1,13 @@
 import os
 import numpy as np
 from aenum import Enum, NoAlias
+import matplotlib.pyplot as plt
+import gymnasium as gym
 from gymnasium import Env
 from gymnasium.spaces import Discrete, Box, Tuple
 from gymnasium.utils import seeding
 
-from cs3arl.sokoban.dataloaders import SokobanDataLoader, sokoban_datafile_parser
+from cs3arl.sokoban.dataloaders import SokobanDataLoader, MySokobanLoader, DeepMindBoxobanLoader, sokoban_datafile_parser
 from cs3arl.sokoban.render_utils import SokobanRenderingEngine
 
 
@@ -396,6 +398,64 @@ class SokobanEnv(Env):
         return SokobanEnv.ActionResult.to_dict()
 
 
+def plot_map_collection(
+        level: str,
+        file_id: str,
+        map_type: str = "custom",
+        n_maps: int = None,
+        n_cols: int = 4,
+    ):
+    """
+    Plot the first n_maps of map_collection. Plot all maps if n_maps is None.
+    """
+
+    if map_type == "custom":
+        map_collection = MySokobanLoader(level=level, file_id=file_id)
+    elif map_type == "deepmind":
+        map_collection = DeepMindBoxobanLoader(level=level, file_id=file_id)
+    else:
+        raise ValueError(f"Invalid map collection type: {map_type}")
+
+    namespace = "sokoban"
+    env_id = "sokoban-v0"
+
+    with gym.envs.registration.namespace(ns=namespace):
+        gym.register(
+            id=env_id,
+            entry_point=SokobanEnv,
+        )
+
+    env = gym.make(
+        id=f"{namespace}/{env_id}",
+        map_collection=map_collection,
+        merge_move_push=True,
+        reset_mode="next",
+        max_steps=100,
+    )
+
+    n_maps = len(map_collection) if n_maps is None else min(n_maps, len(map_collection))
+
+    images = []
+    for i in range(n_maps):
+        env.reset()
+        images.append(env.unwrapped.get_image())
+
+    n_rows = len(images) // n_cols + 1 if len(images) % n_cols != 0 else len(images) // n_cols
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols*4, n_rows*4))
+
+    for i, ax in enumerate(axs.flat):
+        if i < len(images):
+            ax.imshow(images[i])
+            ax.axis("off")
+        else:
+            ax.axis("off")
+    
+    fig.suptitle(f"Collection of {len(images)} maps from {map_type}-{level}-{file_id}", fontweight="bold", fontsize=20)
+    plt.tight_layout()
+    plt.savefig(f"outputs/{map_type}-{level}-{file_id}_map_collection.png", dpi=300)
+
+
 def main():
 
     import gymnasium as gym
@@ -422,3 +482,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    # plot_map_collection(level="medium", file_id=0, map_type="custom", n_maps=16, n_cols=3)

@@ -7,7 +7,6 @@ Inspired from: https://pytorch.org/tutorials/intermediate/reinforcement_q_learni
 import gymnasium as gym
 
 from cs3arl.deeprl.trainers import DQNTrainer
-from cs3arl.deeprl.agents import DQNAgentSokoban
 from cs3arl.sokoban.dataloaders import MySokobanLoader
 from cs3arl.sokoban.sokoban_env import SokobanEnv
 

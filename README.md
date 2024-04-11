@@ -13,7 +13,7 @@ git clone git@github.com:t0m1ab/CS3A_RL_project.git
 
 * Install `cs3arl` as a package in edit mode (see config in `pyproject.toml`): 
 ```bash
-mv CS3A_RL_project/
+cd CS3A_RL_project/
 pip install -e .
 ``` 
 
@@ -22,14 +22,24 @@ pip install -e .
 cs3arl --test
 ``` 
 
-## 1 - Learn to play Black Jack using classic RL methods
-
-* The folder [blackjack](./blackjack/) contains all the code required to train an agent how to play Black Jack using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...
-
-## 2 - Sokoban environment and visualization tools
+## 1 - Sokoban environment and visualization tools
 
 * The folder [sokoban](./sokoban/) contains all the code required to define a Sokoban environment respecting the Gym API and interacting with it through a Gradio UI. It also contains maps as for example a subset of [DeepMind boxoban levels](https://github.com/google-deepmind/boxoban-levels).
 
-## 3 - Deep RL training code
+## 2 - Learn to solve Sokoban using classic RL methods
 
-* The folder [deeprl](./deeprl/) contains code to train Deep RL agents. Still in dev...
+* The folder [classicrl](./classicrl/) contains all the code required to train an agent to solve Sokoban maps using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...
+* Launch a training with the following command:
+```bash
+python games/sokoban_Q_Learning.py
+```
+
+## 3 - Learn to solve Sokoban using deep RL methods
+
+* The folder [deeprl](./deeprl/) contains all the code required to train an agent to solve Sokoban maps using Deep Q-learning.
+* Launch a training with the following command:
+```bash
+python games/sokoban_DQN.py
+```
+
+<img src='./figures/demo_dqn_sokoban.gif' width='100'>

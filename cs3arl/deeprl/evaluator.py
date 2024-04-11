@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 import json
 import gymnasium as gym
 
@@ -109,7 +108,7 @@ def get_episode_frames(
     return data
 
 
-def demo():
+def main():
 
     # load env
     env = load_sokoban_env(
@@ -129,10 +128,6 @@ def demo():
         tag = "sokoban_demo" if len(data) == 1 else f"sokoban_demo_{episode_idx}"
         save_gif(episode_data, tag=tag)
         save_frames_mosaic(episode_data, tag=tag)
-
-
-def main():
-    demo()
 
 
 if __name__ == "__main__":

@@ -25,6 +25,7 @@ dependencies = [
     "aenum",
     "pillow",
     "torch",
+    "imageio",
 ]
 
 # optional dependencies are not installed by default but can be if specified like so: pip install .[dev]

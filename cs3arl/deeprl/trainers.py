@@ -10,7 +10,6 @@ import json
 
 import cs3arl
 from cs3arl.deeprl.agents import DeepAgent, DQN_AGENTS
-# from cs3arl.sokoban.sokoban_env import SokobanEnv
 
 
 class DeepTrainer():
@@ -68,12 +67,12 @@ class DeepTrainer():
 
 
 class DQNTrainer(DeepTrainer):
+    """ Deep QLearning trainer """
     
     def __init__(
             self,
             batch_size: int = 128,
             gamma: float = 0.99,
-            eps_start: float = 0.9,
             eps_max: float = 0.9,
             eps_min: float = 0.05,
             eps_start_decay: float = 0.1,
@@ -93,7 +92,6 @@ class DQNTrainer(DeepTrainer):
         self.__name__ = "DQNTrainer"
         self.bs = batch_size
         self.gamma = gamma
-        self.eps_start = eps_start
         self.eps_max = eps_max
         self.eps_min = eps_min
         self.eps_start_decay = eps_start_decay
@@ -143,7 +141,6 @@ class DQNTrainer(DeepTrainer):
         self.agent = agent_constructor(
             obs_space_size = obs_space_size,
             action_space_size = action_space_size,
-            eps_start = self.eps_start,
             eps_max = self.eps_max,
             eps_min = self.eps_min,
             eps_start_decay = self.eps_start_decay,
@@ -300,18 +297,17 @@ def main():
 
     import gymnasium as gym
 
-    env = gym.make("CartPole-v1")
-
     trainer = DQNTrainer(
         batch_size=128,
         gamma=0.99,
-        eps_start=0.9,
-        eps_end=0.05,
-        eps_decay=100,
+        eps_max=0.9,
+        eps_min=0.05,
+        eps_start_decay=0.1,
+        eps_end_decay=0.9,
         tau=5e-3,
         learning_rate=1e-4,
         n_episodes=50,
-        memory_capacity=10000,
+        memory_capacity=1000,
         device="cpu",
     )
 

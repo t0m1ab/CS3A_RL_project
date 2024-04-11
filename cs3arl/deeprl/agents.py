@@ -18,7 +18,6 @@ class DeepAgent():
             self, 
             obs_space_size: int,
             action_space_size: int,
-            eps_start: float = 0.9,
             eps_max: float = 0.9,
             eps_min: float = 0.05,
             eps_start_decay: float = 0.1,
@@ -31,13 +30,31 @@ class DeepAgent():
             net_type: str = None,
             device: str = None,
         ) -> None:
+        """
+        Base class for deep reinforcement learning agents.
+
+        ARGUEMENTS:
+            - obs_space_size (int): size of the observation space.
+            - action_space_size (int): size of the action space.
+            - eps_max (float): initial maximum value for epsilon.
+            - eps_min (float): final minimum value for epsilon.
+            - eps_start_decay (float): progress value at which epsilon starts to decay (=start_episode_index/_n_episodes).
+            - eps_end_decay (float): progress value at which epsilon reaches its minimum value (=end_episode_index/_n_episodes).
+            - learning_rate (float): learning rate for the optimizer.
+            - gamma (float): discount factor.
+            - tau (float): soft update factor for the target network.
+            - batch_size (int): size of the batches used for training.
+            - memory_capacity (int): size of the replay memory.
+            - net_type (str): type of neural network to use (see NetType in networks.py).
+            - device (str): device to use for computation.        
+        """
 
         self.__name__ = "DeepAgent"
         self._mode = "eval"
         self.device = device
 
         # exploration parameters
-        self.progress = 0 # float in [0,1] to track the progress of the training (= episodes_done / n_episodes)
+        self.progress = 0 # float in [0,1] to track the progress of the training (= #episodesdone / n_episodes)
         self.eps_max = eps_max
         self.eps_min = eps_min
         self.eps_start_decay = eps_start_decay

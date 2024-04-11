@@ -1,6 +1,8 @@
 Welcome to the cs3arl package: a tiny academic library to play with Reinforcement Learning problems and methods.
 
 The submodules/directories available are:
+    |
+    ├ utils.py
 
     ├ classicrl: implements classic RL methods like MCES, SARSA, QLearning...
     |   - agents.py
@@ -8,11 +10,12 @@ The submodules/directories available are:
     |   - utils.py
     └   - visualization.py
 
-    ├ deeprl: implements deep reinforcement learning methods like DQN
+    ├ deeprl: implements deep reinforcement learning methods like Deep QLearning
     |   - agents.py
     |   - trainers.py
     |   - buffers.py
-    └   - networks.py
+    |   - networks.py
+    └   - evaluator.py
     
     ├ sokoban: implements a sokoban environment respecting the API specifications of gym
     |   - dataloaders.py

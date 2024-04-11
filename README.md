@@ -24,11 +24,11 @@ cs3arl --test
 
 ## 1 - Sokoban environment and visualization tools
 
-* The folder [sokoban](./sokoban/) contains all the code required to define a Sokoban environment respecting the Gym API and interacting with it through a Gradio UI. It also contains maps as for example a subset of [DeepMind boxoban levels](https://github.com/google-deepmind/boxoban-levels).
+* The folder [sokoban](./cs3arl/sokoban/) contains all the code required to define a Sokoban environment respecting the Gym API and interacting with it through a Gradio UI. It also contains maps as for example a subset of [DeepMind boxoban levels](https://github.com/google-deepmind/boxoban-levels).
 
 ## 2 - Learn to solve Sokoban using classic RL methods
 
-* The folder [classicrl](./classicrl/) contains all the code required to train an agent to solve Sokoban maps using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...
+* The folder [classicrl](./cs3arl/classicrl/) contains all the code required to train an agent to solve Sokoban maps using different RL methods like MC Exploring Starts, Temporal Difference Learning, Q-learning...
 * Launch a training with the following command:
 ```bash
 python games/sokoban_Q_Learning.py
@@ -36,7 +36,7 @@ python games/sokoban_Q_Learning.py
 
 ## 3 - Learn to solve Sokoban using deep RL methods
 
-* The folder [deeprl](./deeprl/) contains all the code required to train an agent to solve Sokoban maps using Deep Q-learning.
+* The folder [deeprl](./cs3arl/deeprl/) contains all the code required to train an agent to solve Sokoban maps using Deep Q-learning.
 * Launch a training with the following command:
 ```bash
 python games/sokoban_DQN.py
